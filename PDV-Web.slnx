@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PDV.API/PDV.API.csproj" />
+    <Project Path="src/PDV.Application/PDV.Application.csproj" />
+    <Project Path="src/PDV.Domain/PDV.Domain.csproj" />
+    <Project Path="src/PDV.Infrastructure/PDV.Infrastructure.csproj" />
+    <Project Path="src/PDV.Web/PDV.Web.csproj" />
+  </Folder>
+</Solution>

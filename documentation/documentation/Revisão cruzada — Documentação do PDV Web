@@ -1,0 +1,50 @@
+# Revisão cruzada — Documentação do PDV Web
+## Documentos analisados
+- 01 — Visão do Produto
+- 02 — Escopo do MVP
+- 03 — Requisitos Funcionais e Não Funcionais (cópia revisada v1.2)
+
+## 1. Alinhamentos confirmados
+1. O modelo SaaS e a operação híbrida (servidor central + operação local limitada + sincronização posterior) estão coerentes entre a Visão do Produto e o Escopo do MVP.
+2. A Visão descreve uma plataforma ampla, enquanto o Escopo limita corretamente o MVP. Compras, financeiro avançado, fidelidade, área web do cliente, gestão SaaS avançada, IA e integrações complexas podem permanecer na visão de evolução sem fazer parte da primeira entrega.
+3. Os perfis Administrador, Gerente, Operador e Estoquista aparecem de forma consistente. O perfil Cliente e a área própria do cliente aparecem na Visão, mas não no MVP; devem ser tratados como evolução futura.
+4. O estoque básico e o inventário básico fazem parte do MVP. Lotes/validade, curva ABC, transferências entre filiais e modalidades avançadas de inventário estão classificados como evolução futura na revisão v1.2, coerente com o Escopo.
+5. A operação offline limitada, a proteção contra duplicidade, a auditoria, o isolamento entre empresas e os testes das operações críticas estão alinhados entre os documentos.
+
+## 2. Pontos que precisam de decisão
+### 2.1 Devoluções no caixa
+- Visão do Produto, seção 6.1, inclui cancelamentos e devoluções.
+- Escopo do MVP, seção 3.3, inclui cancelamento de vendas e recuperação de vendas interrompidas, mas não menciona devoluções.
+- A documentação de requisitos v1.2 também não possui requisito identificado para devolução.
+- Recomendação: considerar devoluções fora do MVP, a menos que sejam essenciais para a primeira operação real. Se forem incluídas, acrescentar explicitamente ao Escopo e detalhar regras de estoque, pagamentos, auditoria e autorização nos requisitos.
+
+### 2.2 Inteligência artificial consultiva
+- Visão do Produto, seção 6.9, descreve recursos de IA e afirma que inicialmente terão caráter consultivo, com ações operacionais sujeitas à aprovação humana.
+- Escopo do MVP, seção 4, coloca recursos de inteligência artificial fora do MVP.
+- A Visão também diz, na seção 11, que automação de ações por IA está fora do escopo inicial; isso não esclarece se a IA consultiva também ficará fora.
+- Recomendação: explicitar que todos os recursos de IA, inclusive os consultivos, ficam para versões posteriores, caso essa seja a intenção. Isso mantém o MVP menor e evita uma leitura de que o assistente consultivo já deve ser entregue na primeira versão.
+
+### 2.3 Compras e financeiro
+- A Visão do Produto inclui compras, fornecedores e recursos financeiros como módulos da plataforma.
+- O Escopo do MVP exclui gestão completa de compras/fornecedores, contas a pagar/receber, conciliação, DRE e outros recursos financeiros.
+- Não é contradição se a Visão representar o produto completo e o Escopo representar apenas a primeira versão. Recomenda-se manter essa distinção explícita nos documentos.
+
+### 2.4 Perfil Cliente e área web
+- A Visão prevê um perfil Cliente com área própria, fidelidade, histórico e benefícios.
+- O Escopo do MVP prevê somente cadastro básico de clientes e associação de vendas.
+- Alinhamento recomendado: perfil Cliente, área web, fidelidade e benefícios ficam para evolução futura.
+
+## 3. Observações sobre o Escopo
+- O Escopo inclui estoque mínimo/ideal, inventário básico e movimentações; esses itens devem continuar no MVP.
+- O Escopo exclui transferências avançadas entre filiais. A revisão v1.2 classificou o fluxo completo e as divergências de transferência como evolução futura. Isso deve ser mantido até que seja definida uma modalidade básica de transferência para o MVP.
+- O Escopo limita o offline por tempo, quantidade de vendas e valores. Os valores concretos e os limites ainda precisam ser definidos tecnicamente/por decisão de produto; não devem ser inventados nesta revisão.
+
+## 4. Ações recomendadas
+1. Decidir se devoluções entram no MVP.
+2. Decidir se IA consultiva também fica fora do MVP.
+3. Após essas decisões, atualizar a Visão do Produto e/ou o Escopo do MVP para deixar as fronteiras inequívocas.
+4. Atualizar os requisitos somente depois dessas decisões, preservando os requisitos de evolução futura.
+5. Fazer uma revisão final de prioridades, critérios de validação e rastreabilidade entre Visão, Escopo e RF/RNF.
+
+## 5. Integridade da revisão
+Esta análise não altera decisões ainda não confirmadas e não cria requisitos novos. A revisão v1.2 dos requisitos permanece como cópia de trabalho; o documento original não deve ser substituído até a validação final.
