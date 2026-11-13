@@ -50,6 +50,33 @@ h1:focus {
     border-color: #929292;
 }
 
+.auth-page {
+    align-items: center;
+    background: #f3f5f8;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1.5rem;
+}
+
+.auth-card {
+    background: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 0.75rem 2rem rgb(20 35 55 / 12%);
+    max-width: 28rem;
+    padding: 2rem;
+    width: 100%;
+}
+
+.auth-brand {
+    color: #172b4d;
+    display: inline-block;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    text-decoration: none;
+}
+
 .form-floating > .form-control-plaintext::placeholder, .form-floating > .form-control::placeholder {
     color: var(--bs-secondary-color);
     text-align: end;

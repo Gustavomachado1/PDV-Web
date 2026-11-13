@@ -1,7 +1,26 @@
 ﻿@page "/"
+@attribute [Authorize]
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Visão geral | PDV Web</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>Acesso liberado</h1>
 
-Welcome to your new app.
+<AuthorizeView>
+    <Authorized Context="sessao">
+        <p>Olá, <strong>@sessao.User.Identity?.Name</strong>. Sua sessão está autenticada.</p>
+        <dl class="row">
+            <dt class="col-sm-3">Empresa</dt>
+            <dd class="col-sm-9">@sessao.User.FindFirst("empresa_id")?.Value</dd>
+            <dt class="col-sm-3">Sessão válida até</dt>
+            <dd class="col-sm-9">@ExpiracaoFormatada(sessao.User.FindFirst("sessao_expira_em")?.Value)</dd>
+        </dl>
+        <p>Os demais módulos ainda não estão disponíveis nesta etapa.</p>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private static string ExpiracaoFormatada(string? valor)
+        => long.TryParse(valor, out var segundos)
+            ? DateTimeOffset.FromUnixTimeSeconds(segundos).ToLocalTime().ToString("g")
+            : "Indisponível";
+}

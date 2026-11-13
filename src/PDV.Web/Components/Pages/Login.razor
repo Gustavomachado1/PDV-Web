@@ -1,0 +1,50 @@
+@page "/login"
+@layout Layout.AuthLayout
+@attribute [AllowAnonymous]
+
+<PageTitle>Entrar | PDV Web</PageTitle>
+
+<h1>Entrar</h1>
+<p>Informe sua empresa e suas credenciais para acessar o PDV.</p>
+
+@if (Erro is "credenciais")
+{
+    <div class="alert alert-danger" role="alert">Empresa, usuário ou senha inválidos.</div>
+}
+else if (Erro is "indisponivel")
+{
+    <div class="alert alert-warning" role="alert">Não foi possível autenticar agora. Verifique a conexão e tente novamente.</div>
+}
+else if (Estado is "saiu")
+{
+    <div class="alert alert-success" role="status">Você saiu da sua conta.</div>
+}
+else if (Erro is "expirada")
+{
+    <div class="alert alert-warning" role="alert">Sua sessão não está ativa ou expirou. Entre novamente para continuar.</div>
+}
+
+<form method="post" action="/account/login">
+    <AntiforgeryToken />
+    <div class="mb-3">
+        <label class="form-label" for="codigoEmpresa">Código da empresa</label>
+        <input class="form-control" id="codigoEmpresa" name="CodigoEmpresa" autocomplete="organization" maxlength="30" required />
+    </div>
+    <div class="mb-3">
+        <label class="form-label" for="login">Usuário</label>
+        <input class="form-control" id="login" name="Login" autocomplete="username" maxlength="100" required />
+    </div>
+    <div class="mb-4">
+        <label class="form-label" for="senha">Senha</label>
+        <input class="form-control" id="senha" name="Senha" type="password" autocomplete="current-password" maxlength="1024" required />
+    </div>
+    <button class="btn btn-primary w-100" type="submit">Entrar</button>
+</form>
+
+@code {
+    [SupplyParameterFromQuery(Name = "erro")]
+    public string? Erro { get; set; }
+
+    [SupplyParameterFromQuery(Name = "estado")]
+    public string? Estado { get; set; }
+}
