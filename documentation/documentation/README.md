@@ -20,7 +20,7 @@ O contexto `PdvDbContext` e a migration inicial `Inicial` estão em `src/PDV.Inf
 
 ## Estado técnico
 
-A fundação multiempresa, a autenticação da API, o fluxo de login/logout da interface e um comando administrativo de provisionamento inicial estão integrados. O comando cria uma única empresa, filial, conta Administrador, os quatro perfis padrão, permissões iniciais e o plano informado pelo operador. A API emite sessões revogáveis; a interface mantém o ticket no servidor e entrega ao navegador um cookie protegido. O armazenamento de tickets atual é em memória, adequado a uma única instância web. Para múltiplas instâncias ou sessões que precisem sobreviver a reinícios, configure armazenamento distribuído e um chaveiro compartilhado do ASP.NET Core Data Protection. Consulte [Autenticação Web](04-AUTENTICACAO-WEB.md).
+A fundação multiempresa, a autenticação da API, o fluxo de login/logout da interface e um comando administrativo de provisionamento inicial estão integrados. O comando cria uma única empresa, filial, conta Administrador, os quatro perfis padrão, permissões iniciais e o plano Essencial, com limite de 1 filial, 2 caixas e 3 usuários. Esses dados do plano são padrões permanentes do produto e não são configuráveis pelo ambiente de bootstrap. A API emite sessões revogáveis; a interface mantém o ticket no servidor e entrega ao navegador um cookie protegido. O armazenamento de tickets atual é em memória, adequado a uma única instância web. Para múltiplas instâncias ou sessões que precisem sobreviver a reinícios, configure armazenamento distribuído e um chaveiro compartilhado do ASP.NET Core Data Protection. Consulte [Autenticação Web](04-AUTENTICACAO-WEB.md).
 
 Os módulos de negócio do MVP ainda estão pendentes. O comando de provisionamento não é um endpoint HTTP e não define credenciais padrão; consulte abaixo os requisitos e as instruções de execução segura.
 
@@ -47,12 +47,8 @@ O comando `--bootstrap` executa uma única vez o provisionamento no banco config
 | `PDV_BOOTSTRAP_ADMIN_LOGIN` | Login da conta Administrador. |
 | `PDV_BOOTSTRAP_ADMIN_EMAIL` | E-mail (opcional). |
 | `PDV_BOOTSTRAP_ADMIN_SENHA` | Senha inicial (12–1024 caracteres); armazenada somente como hash do ASP.NET Core Identity. |
-| `PDV_BOOTSTRAP_PLANO_NOME` | Nome do plano padrão. |
-| `PDV_BOOTSTRAP_PLANO_MAX_FILIAIS` | Limite positivo de filiais. |
-| `PDV_BOOTSTRAP_PLANO_MAX_CAIXAS` | Limite positivo de caixas. |
-| `PDV_BOOTSTRAP_PLANO_MAX_USUARIOS` | Limite positivo de usuários. |
 
-Nenhum valor ou credencial padrão é fornecido. Informe-os por um gerenciador de segredos ou variáveis de ambiente temporárias e não os inclua em comandos salvos, arquivos versionados ou logs. A senha não é exibida pelo comando. O catálogo inicial contém os exemplos `usuarios.gerenciar` e `venda.cancelar`, concedidos somente ao perfil Administrador; os outros perfis começam sem concessões. O serviço valida e normaliza os dados antes de persistir, usa uma transação e bloqueio no SQL Server, e recusa a execução quando já há dados de provisionamento.
+Nenhuma credencial padrão é fornecida. Informe os dados da empresa, filial e administrador por um gerenciador de segredos ou variáveis de ambiente temporárias e não os inclua em comandos salvos, arquivos versionados ou logs. A senha não é exibida pelo comando. O catálogo inicial contém os exemplos `usuarios.gerenciar` e `venda.cancelar`, concedidos somente ao perfil Administrador; os outros perfis começam sem concessões. O serviço valida e normaliza os dados antes de persistir, usa uma transação e bloqueio no SQL Server, e recusa a execução quando já há dados de provisionamento.
 
 Após configurar `ConnectionStrings__PdvWeb` por um meio seguro, aplique as migrations e execute o bootstrap na raiz do repositório:
 
