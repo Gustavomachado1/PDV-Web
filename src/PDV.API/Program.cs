@@ -14,6 +14,7 @@ builder.Services.AddScoped<EmpresaContextoLogin>();
 builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<AutenticacaoService>();
+builder.Services.AddScoped<ProvisionamentoInicialService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("PdvWeb")
@@ -29,6 +30,16 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
 var app = builder.Build();
+
+if (args.Contains("--bootstrap", StringComparer.Ordinal))
+{
+    var configuracao = ProvisionamentoInicialConfiguracao.CarregarDoAmbiente();
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<ProvisionamentoInicialService>()
+        .ExecutarAsync(configuracao, app.Lifetime.ApplicationStopping);
+    Console.WriteLine("Provisionamento inicial concluído.");
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {

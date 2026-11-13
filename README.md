@@ -175,7 +175,7 @@ As operações devem respeitar as regras de autorização, o isolamento entre em
 
 **Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 13 testes da solução.
 
-**Ainda não concluído:** não há seed de permissões, perfis, plano padrão, empresa/filial ou usuário administrador. O fluxo de login está integrado, mas o provisionamento inicial de contas e os demais módulos do MVP ainda precisam ser concluídos. A proteção da auditoria por permissões do banco de dados também permanece pendente.
+O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`; os valores são fornecidos pelo ambiente e não há credenciais padrão. Consulte o [guia técnico](documentation/documentation/README.md). Os módulos de negócio do MVP e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
 
 O armazenamento de tickets de autenticação da interface web é mantido em memória e atende à configuração atual de instância única. Execuções com múltiplas instâncias ou que precisem sobreviver a reinícios exigirão armazenamento distribuído compartilhado e um chaveiro compartilhado de ASP.NET Core Data Protection. Consulte [a documentação da autenticação web](documentation/documentation/04-AUTENTICACAO-WEB.md).
 
@@ -194,10 +194,8 @@ A implementação seguirá a sequência estabelecida no documento oficial de Esc
 
 ## 8. Próximas atividades
 
-1. Criar o catálogo inicial de permissões, perfis padrão (Administrador, Gerente, Operador e Estoquista) e plano padrão.
-2. Preparar o cadastro inicial da empresa, filial e primeiro usuário administrador.
-3. Completar os requisitos de acesso ainda pendentes, como recuperação de senha, gestão de usuários e permissões, PIN e autorização de operações sensíveis.
-4. Implementar os módulos de negócio do MVP, começando por produtos, condições comerciais, estoque e inventário.
+1. Completar os requisitos de acesso ainda pendentes, como recuperação de senha, gestão de usuários e permissões, PIN e autorização de operações sensíveis.
+2. Implementar os módulos de negócio do MVP, começando por produtos, condições comerciais, estoque e inventário.
 5. Restringir UPDATE e DELETE na tabela de auditoria também por meio das permissões do banco de dados.
 6. Definir o contexto administrativo global do SaaS sem comprometer o isolamento entre empresas.
 7. Definir os limites concretos de operação offline e avaliar a tecnologia da frente de caixa para esse cenário.
