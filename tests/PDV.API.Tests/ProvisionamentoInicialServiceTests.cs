@@ -44,8 +44,8 @@ public class ProvisionamentoInicialServiceTests
         Assert.NotEqual("SenhaInicialMuitoSegura!123", usuario.SenhaHash);
         Assert.Equal(PasswordVerificationResult.Success,
             new PasswordHasher<Usuario>().VerifyHashedPassword(usuario, usuario.SenhaHash, "SenhaInicialMuitoSegura!123"));
-        Assert.Equal("Padrão local", plano.Nome);
-        Assert.Equal((2, 4, 10), (plano.MaxFiliais, plano.MaxCaixas, plano.MaxUsuarios));
+        Assert.Equal("Essencial", plano.Nome);
+        Assert.Equal((1, 2, 3), (plano.MaxFiliais, plano.MaxCaixas, plano.MaxUsuarios));
 
         var vinculoFilial = await contexto.Db.UsuariosFiliais.IgnoreQueryFilters().SingleAsync();
         Assert.Equal(usuario.Id, vinculoFilial.UsuarioId);
@@ -106,11 +106,7 @@ public class ProvisionamentoInicialServiceTests
             ["PDV_BOOTSTRAP_ADMIN_NOME"] = "Administradora",
             ["PDV_BOOTSTRAP_ADMIN_LOGIN"] = "admin",
             ["PDV_BOOTSTRAP_ADMIN_EMAIL"] = "admin@example.test",
-            ["PDV_BOOTSTRAP_ADMIN_SENHA"] = senha,
-            ["PDV_BOOTSTRAP_PLANO_NOME"] = "Padrão local",
-            ["PDV_BOOTSTRAP_PLANO_MAX_FILIAIS"] = "2",
-            ["PDV_BOOTSTRAP_PLANO_MAX_CAIXAS"] = "4",
-            ["PDV_BOOTSTRAP_PLANO_MAX_USUARIOS"] = "10"
+            ["PDV_BOOTSTRAP_ADMIN_SENHA"] = senha
         };
 
     private static async Task<ContextoTeste> CriarContextoAsync()

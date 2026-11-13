@@ -23,11 +23,7 @@ public sealed class ProvisionamentoInicialConfiguracao
         string administradorNome,
         string administradorLogin,
         string? administradorEmail,
-        string administradorSenha,
-        string planoNome,
-        int planoMaxFiliais,
-        int planoMaxCaixas,
-        int planoMaxUsuarios)
+        string administradorSenha)
     {
         EmpresaCodigo = empresaCodigo;
         EmpresaRazaoSocial = empresaRazaoSocial;
@@ -39,10 +35,6 @@ public sealed class ProvisionamentoInicialConfiguracao
         AdministradorLogin = administradorLogin;
         AdministradorEmail = administradorEmail;
         AdministradorSenha = administradorSenha;
-        PlanoNome = planoNome;
-        PlanoMaxFiliais = planoMaxFiliais;
-        PlanoMaxCaixas = planoMaxCaixas;
-        PlanoMaxUsuarios = planoMaxUsuarios;
     }
 
     public string EmpresaCodigo { get; }
@@ -55,10 +47,6 @@ public sealed class ProvisionamentoInicialConfiguracao
     public string AdministradorLogin { get; }
     public string? AdministradorEmail { get; }
     public string AdministradorSenha { get; }
-    public string PlanoNome { get; }
-    public int PlanoMaxFiliais { get; }
-    public int PlanoMaxCaixas { get; }
-    public int PlanoMaxUsuarios { get; }
 
     public static ProvisionamentoInicialConfiguracao CarregarDoAmbiente()
     {
@@ -73,11 +61,7 @@ public sealed class ProvisionamentoInicialConfiguracao
             "PDV_BOOTSTRAP_ADMIN_NOME",
             "PDV_BOOTSTRAP_ADMIN_LOGIN",
             "PDV_BOOTSTRAP_ADMIN_EMAIL",
-            "PDV_BOOTSTRAP_ADMIN_SENHA",
-            "PDV_BOOTSTRAP_PLANO_NOME",
-            "PDV_BOOTSTRAP_PLANO_MAX_FILIAIS",
-            "PDV_BOOTSTRAP_PLANO_MAX_CAIXAS",
-            "PDV_BOOTSTRAP_PLANO_MAX_USUARIOS"
+            "PDV_BOOTSTRAP_ADMIN_SENHA"
         };
         var ambiente = nomes.ToDictionary(nome => nome, Environment.GetEnvironmentVariable, StringComparer.Ordinal);
         return Parse(ambiente);
@@ -112,11 +96,7 @@ public sealed class ProvisionamentoInicialConfiguracao
             Obrigatorio(ambiente, "PDV_BOOTSTRAP_ADMIN_NOME", 200),
             Obrigatorio(ambiente, "PDV_BOOTSTRAP_ADMIN_LOGIN", 100),
             email,
-            senha,
-            Obrigatorio(ambiente, "PDV_BOOTSTRAP_PLANO_NOME", 100),
-            LimitePositivo(ambiente, "PDV_BOOTSTRAP_PLANO_MAX_FILIAIS"),
-            LimitePositivo(ambiente, "PDV_BOOTSTRAP_PLANO_MAX_CAIXAS"),
-            LimitePositivo(ambiente, "PDV_BOOTSTRAP_PLANO_MAX_USUARIOS"));
+            senha);
     }
 
     private static string Obrigatorio(IReadOnlyDictionary<string, string?> ambiente, string nome, int maximo)
@@ -140,15 +120,6 @@ public sealed class ProvisionamentoInicialConfiguracao
 
     private static string? Valor(IReadOnlyDictionary<string, string?> ambiente, string nome)
         => ambiente.TryGetValue(nome, out var valor) ? valor : null;
-
-    private static int LimitePositivo(IReadOnlyDictionary<string, string?> ambiente, string nome)
-    {
-        var valor = Obrigatorio(ambiente, nome, 10);
-        if (!int.TryParse(valor, NumberStyles.None, CultureInfo.InvariantCulture, out var limite) || limite < 1)
-            throw new InvalidOperationException($"A variável de ambiente {nome} deve ser um inteiro positivo.");
-
-        return limite;
-    }
 
     private static bool CnpjValido(string cnpj)
     {
@@ -177,6 +148,11 @@ public sealed class ProvisionamentoInicialService(
     EmpresaContextoLogin empresaContexto,
     IPasswordHasher<Usuario> passwordHasher)
 {
+    private const string PlanoPadraoNome = "Essencial";
+    private const int PlanoPadraoMaxFiliais = 1;
+    private const int PlanoPadraoMaxCaixas = 2;
+    private const int PlanoPadraoMaxUsuarios = 3;
+
     public async Task ExecutarAsync(
         ProvisionamentoInicialConfiguracao configuracao,
         CancellationToken cancellationToken)
@@ -223,10 +199,10 @@ public sealed class ProvisionamentoInicialService(
         };
         var plano = new Plano
         {
-            Nome = configuracao.PlanoNome,
-            MaxFiliais = configuracao.PlanoMaxFiliais,
-            MaxCaixas = configuracao.PlanoMaxCaixas,
-            MaxUsuarios = configuracao.PlanoMaxUsuarios
+            Nome = PlanoPadraoNome,
+            MaxFiliais = PlanoPadraoMaxFiliais,
+            MaxCaixas = PlanoPadraoMaxCaixas,
+            MaxUsuarios = PlanoPadraoMaxUsuarios
         };
         var permissoes = new[]
         {
