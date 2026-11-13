@@ -6,4 +6,8 @@
     <Project Path="src/PDV.Infrastructure/PDV.Infrastructure.csproj" />
     <Project Path="src/PDV.Web/PDV.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PDV.Infrastructure.Tests/PDV.Infrastructure.Tests.csproj" />
+    <Project Path="tests/PDV.API.Tests/PDV.API.Tests.csproj" />
+  </Folder>
 </Solution>

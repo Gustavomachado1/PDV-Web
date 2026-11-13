@@ -38,13 +38,20 @@ public sealed class AuditoriaInterceptor(IUsuarioAtual usuarioAtual) : SaveChang
             if (entry.Entity is RegistroAuditoria && (entry.State is EntityState.Modified or EntityState.Deleted))
                 throw new InvalidOperationException("Registros de auditoria não podem ser alterados ou excluídos.");
 
-            if (entry.Entity is IEmpresaScoped escopo && entry.State == EntityState.Added)
+            if (entry.Entity is IEmpresaScoped && entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
             {
-                if (usuarioAtual.EmpresaId is Guid atual)
+                if (usuarioAtual.EmpresaId is not Guid atual || atual == Guid.Empty)
+                    throw new InvalidOperationException("Não é possível gravar dados de empresa sem uma empresa válida no contexto atual.");
+
+                var empresa = entry.Property(nameof(IEmpresaScoped.EmpresaId));
+                if (entry.State == EntityState.Added && Equals(empresa.CurrentValue, Guid.Empty))
                 {
-                    if (escopo.EmpresaId == Guid.Empty) escopo.EmpresaId = atual;
-                    else if (escopo.EmpresaId != atual)
-                        throw new InvalidOperationException("Tentativa de gravar dados em outra empresa.");
+                    empresa.CurrentValue = atual;
+                }
+                else if (!Equals(empresa.CurrentValue, atual) ||
+                         (entry.State != EntityState.Added && !Equals(empresa.OriginalValue, atual)))
+                {
+                    throw new InvalidOperationException("Tentativa de gravar dados em outra empresa.");
                 }
             }
 
