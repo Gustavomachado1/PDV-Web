@@ -11,6 +11,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<CatalogoApiClient>();
+builder.Services.AddScoped<EstoqueApiClient>();
 builder.Services.AddSingleton<ITicketStore, ArmazenamentoTicketAutenticacao>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

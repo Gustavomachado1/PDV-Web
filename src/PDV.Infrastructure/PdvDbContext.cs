@@ -18,6 +18,10 @@ public class PdvDbContext(DbContextOptions<PdvDbContext> options, IUsuarioAtual 
     public DbSet<Subcategoria> Subcategorias => Set<Subcategoria>();
     public DbSet<Produto> Produtos => Set<Produto>();
     public DbSet<CodigoBarrasProduto> CodigosBarrasProdutos => Set<CodigoBarrasProduto>();
+    public DbSet<SaldoEstoque> SaldosEstoque => Set<SaldoEstoque>();
+    public DbSet<MovimentoEstoque> MovimentosEstoque => Set<MovimentoEstoque>();
+    public DbSet<InventarioEstoque> InventariosEstoque => Set<InventarioEstoque>();
+    public DbSet<ItemInventarioEstoque> ItensInventarioEstoque => Set<ItemInventarioEstoque>();
     public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<Permissao> Permissoes => Set<Permissao>();
     public DbSet<PerfilPermissao> PerfisPermissoes => Set<PerfilPermissao>();

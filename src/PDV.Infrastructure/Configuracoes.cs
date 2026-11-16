@@ -136,6 +136,7 @@ internal class UsuarioConfig : IEntityTypeConfiguration<Usuario>
         b.Property(x => x.Email).HasMaxLength(200);
         b.Property(x => x.SenhaHash).HasMaxLength(500).IsRequired();
         b.Property(x => x.PinHash).HasMaxLength(500);
+        b.HasAlternateKey(x => new { x.EmpresaId, x.Id });
         b.HasIndex(x => new { x.EmpresaId, x.Login }).IsUnique();
         b.HasOne(x => x.Perfil).WithMany().HasForeignKey(x => x.PerfilId);
     }
@@ -180,8 +181,93 @@ internal class AutorizacaoConfig : IEntityTypeConfiguration<AutorizacaoOperacao>
     {
         b.Property(x => x.Operacao).HasMaxLength(100).IsRequired();
         b.Property(x => x.Referencia).HasMaxLength(100);
-        b.Property(x => x.Justificativa).HasMaxLength(500).IsRequired();
+        b.Property(x => x.Justificativa).HasMaxLength(500);
+        b.HasAlternateKey(x => new { x.EmpresaId, x.Id });
         b.HasIndex(x => new { x.EmpresaId, x.SolicitadaEmUtc });
+    }
+}
+
+internal class SaldoEstoqueConfig : IEntityTypeConfiguration<SaldoEstoque>
+{
+    public void Configure(EntityTypeBuilder<SaldoEstoque> b)
+    {
+        b.Property(x => x.Quantidade).HasPrecision(18, 6);
+        b.Property(x => x.EstoqueMinimo).HasPrecision(18, 6);
+        b.Property(x => x.EstoqueIdeal).HasPrecision(18, 6);
+        b.HasAlternateKey(x => new { x.EmpresaId, x.Id });
+        b.HasIndex(x => new { x.EmpresaId, x.FilialId, x.ProdutoId }).IsUnique();
+        b.HasOne(x => x.Filial).WithMany()
+            .HasForeignKey(x => x.FilialId);
+        b.HasOne(x => x.Produto).WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.ProdutoId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
+    }
+}
+
+internal class MovimentoEstoqueConfig : IEntityTypeConfiguration<MovimentoEstoque>
+{
+    public void Configure(EntityTypeBuilder<MovimentoEstoque> b)
+    {
+        b.Property(x => x.Tipo).IsRequired();
+        b.Property(x => x.Situacao).IsRequired();
+        b.Property(x => x.Quantidade).HasPrecision(18, 6);
+        b.Property(x => x.SaldoAnterior).HasPrecision(18, 6);
+        b.Property(x => x.SaldoResultante).HasPrecision(18, 6);
+        b.Property(x => x.Justificativa).HasMaxLength(500);
+        b.HasAlternateKey(x => new { x.EmpresaId, x.Id });
+        b.HasIndex(x => new { x.EmpresaId, x.FilialId, x.ProdutoId, x.SolicitadoEmUtc });
+        b.HasIndex(x => x.AutorizacaoOperacaoId).IsUnique().HasFilter("[AutorizacaoOperacaoId] IS NOT NULL");
+        b.HasOne(x => x.Filial).WithMany()
+            .HasForeignKey(x => x.FilialId);
+        b.HasOne(x => x.Produto).WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.ProdutoId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
+        b.HasOne<Usuario>().WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.SolicitanteId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
+        b.HasOne<Usuario>().WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.AutorizadorId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
+        b.HasOne(x => x.InventarioEstoque).WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.FilialId, x.InventarioEstoqueId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.FilialId, x.Id });
+        b.HasOne(x => x.AutorizacaoOperacao).WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.AutorizacaoOperacaoId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
+    }
+}
+
+internal class InventarioEstoqueConfig : IEntityTypeConfiguration<InventarioEstoque>
+{
+    public void Configure(EntityTypeBuilder<InventarioEstoque> b)
+    {
+        b.Property(x => x.Tipo).IsRequired();
+        b.Property(x => x.Justificativa).HasMaxLength(500);
+        b.HasAlternateKey(x => new { x.EmpresaId, x.Id });
+        b.HasAlternateKey(x => new { x.EmpresaId, x.FilialId, x.Id });
+        b.HasIndex(x => new { x.EmpresaId, x.FilialId, x.ConcluidoEmUtc });
+        b.HasOne(x => x.Filial).WithMany()
+            .HasForeignKey(x => x.FilialId);
+        b.HasOne<Usuario>().WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.UsuarioId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
+    }
+}
+
+internal class ItemInventarioEstoqueConfig : IEntityTypeConfiguration<ItemInventarioEstoque>
+{
+    public void Configure(EntityTypeBuilder<ItemInventarioEstoque> b)
+    {
+        b.Property(x => x.SaldoAnterior).HasPrecision(18, 6);
+        b.Property(x => x.QuantidadeContada).HasPrecision(18, 6);
+        b.Property(x => x.Diferenca).HasPrecision(18, 6);
+        b.HasIndex(x => new { x.EmpresaId, x.InventarioEstoqueId, x.ProdutoId }).IsUnique();
+        b.HasOne(x => x.InventarioEstoque).WithMany(x => x.Itens)
+            .HasForeignKey(x => new { x.EmpresaId, x.FilialId, x.InventarioEstoqueId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.FilialId, x.Id });
+        b.HasOne(x => x.Produto).WithMany()
+            .HasForeignKey(x => new { x.EmpresaId, x.ProdutoId })
+            .HasPrincipalKey(x => new { x.EmpresaId, x.Id });
     }
 }
 

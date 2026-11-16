@@ -208,7 +208,13 @@ public sealed class ProvisionamentoInicialService(
         {
             new Permissao { Codigo = "catalogo.gerenciar", Descricao = "Gerenciar catálogo de produtos" },
             new Permissao { Codigo = "usuarios.gerenciar", Descricao = "Gerenciar usuários" },
-            new Permissao { Codigo = "venda.cancelar", Descricao = "Cancelar vendas" }
+            new Permissao { Codigo = "venda.cancelar", Descricao = "Cancelar vendas" },
+            new Permissao { Codigo = "estoque.consultar", Descricao = "Consultar estoque e movimentações" },
+            new Permissao { Codigo = "estoque.configurar", Descricao = "Configurar estoque por filial" },
+            new Permissao { Codigo = "estoque.movimentar.solicitar", Descricao = "Solicitar movimentação manual de estoque" },
+            new Permissao { Codigo = "estoque.movimento.entrada.autorizar", Descricao = "Autorizar entradas manuais de estoque" },
+            new Permissao { Codigo = "estoque.movimento.saida.autorizar", Descricao = "Autorizar saídas manuais de estoque" },
+            new Permissao { Codigo = "estoque.inventario.gerenciar", Descricao = "Realizar e concluir inventários" }
         };
         var perfis = new[]
         {
@@ -218,6 +224,8 @@ public sealed class ProvisionamentoInicialService(
             new Perfil { EmpresaId = empresa.Id, Nome = "Estoquista", Tipo = TipoPerfil.Estoquista }
         };
         var administrador = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Administrador);
+        var gerente = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Gerente);
+        var estoquista = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Estoquista);
         var usuario = new Usuario
         {
             EmpresaId = empresa.Id,
@@ -237,12 +245,35 @@ public sealed class ProvisionamentoInicialService(
         db.Planos.Add(plano);
         db.Permissoes.AddRange(permissoes);
         db.Perfis.AddRange(perfis);
-        db.PerfisPermissoes.AddRange(permissoes.Select(permissao => new PerfilPermissao
-        {
-            EmpresaId = empresa.Id,
-            PerfilId = administrador.Id,
-            PermissaoId = permissao.Id
-        }));
+        var permissoesGerente = permissoes.Where(x => x.Codigo is
+            "estoque.consultar" or
+            "estoque.movimentar.solicitar" or
+            "estoque.movimento.entrada.autorizar" or
+            "estoque.movimento.saida.autorizar");
+        var permissoesEstoquista = permissoes.Where(x => x.Codigo is
+            "estoque.consultar" or
+            "estoque.configurar" or
+            "estoque.movimentar.solicitar" or
+            "estoque.inventario.gerenciar");
+        db.PerfisPermissoes.AddRange(
+            permissoes.Select(permissao => new PerfilPermissao
+            {
+                EmpresaId = empresa.Id,
+                PerfilId = administrador.Id,
+                PermissaoId = permissao.Id
+            })
+            .Concat(permissoesGerente.Select(permissao => new PerfilPermissao
+            {
+                EmpresaId = empresa.Id,
+                PerfilId = gerente.Id,
+                PermissaoId = permissao.Id
+            }))
+            .Concat(permissoesEstoquista.Select(permissao => new PerfilPermissao
+            {
+                EmpresaId = empresa.Id,
+                PerfilId = estoquista.Id,
+                PermissaoId = permissao.Id
+            })));
         db.Usuarios.Add(usuario);
         db.UsuariosFiliais.Add(new UsuarioFilial
         {

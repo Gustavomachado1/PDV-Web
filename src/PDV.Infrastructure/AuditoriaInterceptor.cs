@@ -102,7 +102,11 @@ public sealed class AuditoriaInterceptor(IUsuarioAtual usuarioAtual) : SaveChang
             novos.Add(new RegistroAuditoria
             {
                 EmpresaId = empresaId.Value,
-                FilialId = usuarioAtual.FilialId,
+                FilialId = entry.Entity is IFilialScoped entidadeFilial
+                    ? entidadeFilial.FilialId
+                    : entry.Entity is AutorizacaoOperacao autorizacao
+                        ? autorizacao.FilialId
+                    : usuarioAtual.FilialId,
                 UsuarioId = usuarioAtual.UsuarioId,
                 Operacao = $"{tipo}.{acao}",
                 Entidade = tipo,

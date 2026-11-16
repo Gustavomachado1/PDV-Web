@@ -167,6 +167,7 @@ As operações devem respeitar as regras de autorização, o isolamento entre em
 - Interface `IUsuarioAtual`, `PdvDbContext`, configurações do EF Core e migration inicial `Inicial` versionada no repositório.
 - Registro de infraestrutura por injeção de dependência e `AuditoriaInterceptor`.
 - API com endpoint de saúde (`/saude`), endpoints de login, consulta da sessão e logout, Swagger em desenvolvimento e hub inicial de notificações.
+- Catálogo compartilhado de produtos, estoque isolado por filial, solicitações de movimentação com autorização de outro usuário e inventários completos/parciais com ajustes auditados.
 - Autenticação da API por sessão opaca revogável: o token é armazenado como hash, a sessão dura oito horas e cinco tentativas inválidas podem bloquear o usuário por quinze minutos.
 - Login e logout integrados à interface Blazor. O navegador recebe um cookie `HttpOnly`, `Secure` e `SameSite=Lax`; o token da API fica no armazenamento de tickets do servidor web, não no armazenamento do navegador.
 - Claims de usuário, empresa e filial são obtidas após validação da sessão pela API.
@@ -174,16 +175,16 @@ As operações devem respeitar as regras de autorização, o isolamento entre em
 - Novas gravações recebem a empresa do contexto; gravações sem empresa válida ou que tentem alterar dados de outra empresa são rejeitadas.
 - Auditoria automática de alterações com valores anteriores e posteriores em JSON. O fluxo normal do EF Core impede alteração ou exclusão de registros de auditoria.
 
-**Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 29 testes da solução.
+**Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 42 testes da solução.
 
-O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`. Para recuperar uma assinatura ausente em um banco local já provisionado, há o comando explícito `--provisionar-assinatura-local`, restrito a Development e com confirmação do banco; ele cria a assinatura Essencial ativa sem cobrança somente para desenvolvimento local. Consulte o [guia técnico](documentation/documentation/README.md) para conferir o banco e executar os comandos com segurança. Os demais módulos de negócio do MVP e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
+O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`. Para recuperar uma assinatura ausente em um banco local já provisionado, há o comando explícito `--provisionar-assinatura-local`, restrito a Development e com confirmação do banco; ele cria a assinatura Essencial ativa sem cobrança somente para desenvolvimento local. Consulte o [guia técnico](documentation/documentation/README.md) para conferir o banco e executar os comandos com segurança. Vendas, pagamentos, caixa, devoluções e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
 
 ### Migrações e catálogo padrão
 
-As migrações `CatalogoInicial`, `HierarquiaCatalogo` e `HistoricoCodigosBarras` criam as tabelas de departamentos, categorias, subcategorias, produtos e códigos de barras, e cadastram a permissão de catálogo para os perfis Administrador existentes. Elas foram geradas, mas não foram aplicadas a nenhum banco pelo agente. Antes de aplicar, faça backup e confirme que a connection string aponta para o ambiente e banco corretos. Gere e revise o SQL idempotente:
+As migrações `CatalogoInicial`, `HierarquiaCatalogo`, `HistoricoCodigosBarras`, `EstoquePorFilial` e `IntegridadeFilialEstoque` criam as tabelas de departamentos, categorias, subcategorias, produtos, códigos de barras, saldos, movimentações e inventários; a migration de estoque também cadastra as permissões necessárias em bancos já provisionados. Elas foram geradas, mas não foram aplicadas a nenhum banco pelo agente. Antes de aplicar, faça backup e confirme que a connection string aponta para o ambiente e banco corretos. Gere e revise o SQL idempotente:
 
 ```powershell
-dotnet ef migrations script --idempotent --project src\PDV.Infrastructure\PDV.Infrastructure.csproj --startup-project src\PDV.API\PDV.API.csproj --output catalogo-migrations.sql
+dotnet ef migrations script --idempotent --project src\PDV.Infrastructure\PDV.Infrastructure.csproj --startup-project src\PDV.API\PDV.API.csproj --output pdv-migrations.sql
 ```
 
 Após revisar o script e obter a aprovação operacional, aplique a migração de forma explícita:
@@ -209,7 +210,7 @@ O armazenamento de tickets de autenticação da interface web é mantido em mem�
 | Fase | Descrição | Situação |
 |---|---|---|
 | 1 | Fundação, isolamento e autenticação | Parcialmente implementada; autenticação da API e login web integrados |
-| 2 | Produtos, cadastros e estoque | Parcialmente implementada; catálogo inicial disponível |
+| 2 | Produtos, cadastros e estoque | Parcialmente implementada; catálogo, estoque básico e inventário por filial disponíveis |
 | 3 | Frente de caixa e relatórios | Planejada |
 | 4 | Clientes, devoluções e créditos | Planejada |
 | 5 | Operação offline | Planejada |
@@ -219,11 +220,11 @@ A implementação seguirá a sequência estabelecida no documento oficial de Esc
 
 ## 8. Próximas atividades
 
-1. Completar os requisitos de acesso ainda pendentes, como recuperação de senha, gestão de usuários e permissões, PIN e autorização de operações sensíveis.
-2. Completar produtos e avançar para condições comerciais, estoque e inventário.
-5. Restringir UPDATE e DELETE na tabela de auditoria também por meio das permissões do banco de dados.
-6. Definir o contexto administrativo global do SaaS sem comprometer o isolamento entre empresas.
-7. Definir os limites concretos de operação offline e avaliar a tecnologia da frente de caixa para esse cenário.
+1. Completar os requisitos de acesso ainda pendentes, como recuperação de senha, gestão de usuários e permissões, PIN e autorização para outras operações.
+2. Avançar produtos para condições comerciais, custo e preço por filial.
+3. Restringir UPDATE e DELETE na tabela de auditoria também por meio das permissões do banco de dados.
+4. Definir o contexto administrativo global do SaaS sem comprometer o isolamento entre empresas.
+5. Definir os limites concretos de operação offline e avaliar a tecnologia da frente de caixa para esse cenário.
 
 ## 9. Documentação oficial
 

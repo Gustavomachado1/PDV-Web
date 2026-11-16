@@ -17,6 +17,7 @@ builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<AutenticacaoService>();
 builder.Services.AddScoped<AutorizacaoPermissaoService>();
+builder.Services.AddScoped<EstoqueService>();
 builder.Services.AddScoped<ProvisionamentoInicialService>();
 builder.Services.AddScoped<ProvisionamentoAssinaturaLocalService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -146,5 +147,6 @@ app.MapGet("/auth/me", (ClaimsPrincipal usuario) => Results.Ok(new
 
 app.MapHub<NotificacoesHub>("/hubs/notificacoes").RequireAuthorization();
 app.MapCatalogoEndpoints();
+app.MapEstoqueEndpoints();
 
 app.Run();

@@ -131,6 +131,65 @@ public sealed class AutenticacaoService(
         return true;
     }
 
+    public async Task<Usuario?> ReautenticarParaAutorizacaoAsync(
+        Guid empresaId, string login, string senha, CancellationToken cancellationToken)
+    {
+        if (empresaId == Guid.Empty || string.IsNullOrWhiteSpace(login) ||
+            string.IsNullOrEmpty(senha) || login.Trim().Length > 100 || senha.Length > 1024)
+            return null;
+
+        var loginNormalizado = login.Trim();
+        var agora = timeProvider.GetUtcNow().UtcDateTime;
+        var usuario = await db.Usuarios.IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.EmpresaId == empresaId && x.Login == loginNormalizado, cancellationToken);
+        if (usuario is null)
+        {
+            db.LogsAutenticacao.Add(CriarLog(
+                empresaId, null, loginNormalizado, false, "Credenciais inválidas", null, agora));
+            await db.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        if (usuario.BloqueadoAteUtc is DateTime bloqueadoAte && bloqueadoAte > agora)
+        {
+            db.LogsAutenticacao.Add(CriarLog(
+                empresaId, usuario.Id, loginNormalizado, false, "Usuário temporariamente bloqueado", null, agora));
+            await db.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        if (usuario.BloqueadoAteUtc is not null)
+        {
+            usuario.TentativasFalhas = 0;
+            usuario.BloqueadoAteUtc = null;
+        }
+
+        if (usuario.Status != StatusUsuario.Ativo || !VerificarSenha(usuario, senha))
+        {
+            if (usuario.Status == StatusUsuario.Ativo)
+            {
+                usuario.TentativasFalhas++;
+                if (usuario.TentativasFalhas >= MaxTentativasFalhas)
+                    usuario.BloqueadoAteUtc = agora.Add(DuracaoBloqueio);
+            }
+
+            var motivo = usuario.Status == StatusUsuario.Ativo
+                ? "Credenciais inválidas"
+                : "Usuário inativo ou bloqueado";
+            db.LogsAutenticacao.Add(CriarLog(
+                empresaId, usuario.Id, loginNormalizado, false, motivo, null, agora));
+            await db.SaveChangesAsync(cancellationToken);
+            return null;
+        }
+
+        usuario.TentativasFalhas = 0;
+        usuario.BloqueadoAteUtc = null;
+        db.LogsAutenticacao.Add(CriarLog(
+            empresaId, usuario.Id, loginNormalizado, true, null, null, agora));
+        await db.SaveChangesAsync(cancellationToken);
+        return usuario;
+    }
+
     internal static string HashToken(string token)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
 
