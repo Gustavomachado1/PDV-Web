@@ -277,7 +277,7 @@ else
         }
         catch (HttpRequestException ex)
         {
-            _erro = $"Não foi possível carregar o catálogo. {ex.Message}";
+            _erro = $"Não foi possível carregar o catálogo. {MensagemHttpSegura(ex)}";
         }
         catch (InvalidOperationException ex)
         {
@@ -510,8 +510,15 @@ else
     private void Falha(Exception ex)
     {
         _sucesso = null;
-        _erro = ex.Message;
+        _erro = ex is HttpRequestException erroHttp
+            ? MensagemHttpSegura(erroHttp)
+            : ex.Message;
     }
+
+    private static string MensagemHttpSegura(HttpRequestException erro)
+        => erro.StatusCode is null
+            ? "Não foi possível acessar a API. Tente novamente."
+            : erro.Message;
 
     private void LimparMensagens()
     {

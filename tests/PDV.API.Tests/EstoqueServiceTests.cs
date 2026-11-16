@@ -205,6 +205,51 @@ public class EstoqueServiceTests
     }
 
     [Fact]
+    public async Task ListarFiliaisRetornaSomenteVinculosAtivosDoTenantEmOrdemDeNome()
+    {
+        await using var contexto = await CriarContextoAsync();
+        var filialZulu = new Filial
+        {
+            EmpresaId = contexto.Empresa.Id,
+            Codigo = "filial-z",
+            Nome = "Zulu"
+        };
+        var filialInativa = new Filial
+        {
+            EmpresaId = contexto.Empresa.Id,
+            Codigo = "filial-inativa",
+            Nome = "Alfa inativa",
+            Ativa = false
+        };
+        var filialSemVinculo = new Filial
+        {
+            EmpresaId = contexto.Empresa.Id,
+            Codigo = "filial-sem-vinculo",
+            Nome = "Beta"
+        };
+        contexto.Db.Filiais.AddRange(filialZulu, filialInativa, filialSemVinculo);
+        contexto.Db.UsuariosFiliais.AddRange(
+            new UsuarioFilial
+            {
+                EmpresaId = contexto.Empresa.Id,
+                UsuarioId = contexto.Usuario.Id,
+                FilialId = filialZulu.Id
+            },
+            new UsuarioFilial
+            {
+                EmpresaId = contexto.Empresa.Id,
+                UsuarioId = contexto.Usuario.Id,
+                FilialId = filialInativa.Id
+            });
+        await contexto.Db.SaveChangesAsync();
+
+        var filiais = await contexto.Estoque.ListarFiliaisAsync(CancellationToken.None);
+
+        Assert.Equal(["Matriz", "Zulu"], filiais.Select(x => x.Nome));
+        Assert.Equal([contexto.Filial.Id, filialZulu.Id], filiais.Select(x => x.Id));
+    }
+
+    [Fact]
     public async Task ProdutoDoCatalogoFicaIndisponivelAteConfiguracaoNaFilial()
     {
         await using var contexto = await CriarContextoAsync();

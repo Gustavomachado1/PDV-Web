@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PDV.API\PDV.API.csproj" />
+    <ProjectReference Include="..\..\src\PDV.Web\PDV.Web.csproj" />
   </ItemGroup>
 
 </Project>
