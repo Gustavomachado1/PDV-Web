@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PDV.API.Hubs;
 using PDV.API.Endpoints;
+using PDV.API.Middleware;
 using PDV.API.Servicos;
 using PDV.Application;
 using PDV.Domain;
@@ -35,6 +36,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
 var app = builder.Build();
+app.UseMiddleware<ApiExceptionHandlingMiddleware>();
 
 var solicitouBootstrap = args.Contains("--bootstrap", StringComparer.Ordinal);
 var solicitouAssinaturaLocal = args.Contains("--provisionar-assinatura-local", StringComparer.Ordinal);

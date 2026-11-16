@@ -24,6 +24,10 @@ A fundação multiempresa, a autenticação da API, o fluxo de login/logout da i
 
 O catálogo compartilhado de produtos e a gestão básica de estoque/inventário por filial estão integrados. Os módulos de vendas, pagamentos, caixa e devoluções ainda estão pendentes. O comando de provisionamento não é um endpoint HTTP e não define credenciais padrão; consulte abaixo os requisitos e as instruções de execução segura.
 
+### Tratamento de erros da API
+
+Exceções não tratadas produzem uma resposta HTTP 500 genérica em todos os ambientes, inclusive Development. A API registra apenas tipo da exceção, stack trace e identificador da requisição; cabeçalhos, credenciais e mensagens de exceção não são incluídos no log. Os clientes web ignoram os corpos de respostas HTTP com falha e exibem mensagens seguras baseadas no status.
+
 ### Estoque e inventário por filial
 
 A tela **Estoque e inventário** consulta somente filiais vinculadas ao usuário e isola saldos, configurações, inventários e movimentações por empresa e filial. Um produto sem configuração de estoque na filial começa indisponível e com saldo zero; a disponibilidade precisa ser habilitada explicitamente por filial. Estoque mínimo e ideal são opcionais, e o alerta é exibido quando o saldo fica abaixo do mínimo.

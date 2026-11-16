@@ -1,7 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 
 namespace PDV.Web.Autenticacao;
@@ -74,7 +73,7 @@ public sealed class CatalogoApiClient(
     {
         using var requisicao = await CriarRequisicaoAsync(HttpMethod.Get, caminho, null, cancellationToken);
         using var resposta = await clientes.CreateClient("PdvApi").SendAsync(requisicao, cancellationToken);
-        await ValidarRespostaAsync(resposta, cancellationToken);
+        ValidarResposta(resposta);
         return await resposta.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("A API retornou uma resposta vazia para o catálogo.");
     }
@@ -84,7 +83,7 @@ public sealed class CatalogoApiClient(
     {
         using var requisicao = await CriarRequisicaoAsync(metodo, caminho, corpo, cancellationToken);
         using var resposta = await clientes.CreateClient("PdvApi").SendAsync(requisicao, cancellationToken);
-        await ValidarRespostaAsync(resposta, cancellationToken);
+        ValidarResposta(resposta);
         return await resposta.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("A API retornou uma resposta vazia para o catálogo.");
     }
@@ -93,7 +92,7 @@ public sealed class CatalogoApiClient(
     {
         using var requisicao = await CriarRequisicaoAsync(HttpMethod.Delete, caminho, null, cancellationToken);
         using var resposta = await clientes.CreateClient("PdvApi").SendAsync(requisicao, cancellationToken);
-        await ValidarRespostaAsync(resposta, cancellationToken);
+        ValidarResposta(resposta);
     }
 
     private async Task<HttpRequestMessage> CriarRequisicaoAsync(
@@ -111,38 +110,20 @@ public sealed class CatalogoApiClient(
         return requisicao;
     }
 
-    private static async Task ValidarRespostaAsync(
-        HttpResponseMessage resposta, CancellationToken cancellationToken)
+    private static void ValidarResposta(HttpResponseMessage resposta)
     {
         if (resposta.IsSuccessStatusCode)
             return;
 
-        if (resposta.StatusCode == HttpStatusCode.Forbidden)
+        if (resposta.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             throw new UnauthorizedAccessException("Seu usuário não tem permissão para gerenciar o catálogo.");
         if (resposta.StatusCode == HttpStatusCode.NotFound)
-            throw new InvalidOperationException("O registro solicitado não foi encontrado nesta empresa.");
+            throw new InvalidOperationException(MensagemErroHttp.Para(resposta.StatusCode));
         if (resposta.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
-        {
-            var corpo = await resposta.Content.ReadAsStringAsync(cancellationToken);
-            using var json = JsonDocument.Parse(corpo);
-            if (json.RootElement.TryGetProperty("detail", out var detalhe) &&
-                !string.IsNullOrWhiteSpace(detalhe.GetString()))
-                throw new InvalidOperationException(detalhe.GetString());
-            if (json.RootElement.TryGetProperty("errors", out var erros))
-            {
-                var mensagens = erros.EnumerateObject()
-                    .SelectMany(x => x.Value.EnumerateArray())
-                    .Select(x => x.GetString())
-                    .Where(x => !string.IsNullOrWhiteSpace(x));
-                throw new InvalidOperationException(string.Join(" ", mensagens));
-            }
+            throw new InvalidOperationException(MensagemErroHttp.Para(resposta.StatusCode));
 
-            throw new InvalidOperationException("Revise os dados ou confira os registros relacionados.");
-        }
-
-        var detalheResposta = await resposta.Content.ReadAsStringAsync(cancellationToken);
         throw new HttpRequestException(
-            $"A API do catálogo respondeu com status {(int)resposta.StatusCode}. {detalheResposta}",
+            MensagemErroHttp.Para(resposta.StatusCode),
             null,
             resposta.StatusCode);
     }

@@ -18,15 +18,17 @@ public sealed class EstoqueService(
     public async Task<IReadOnlyList<FilialEstoqueDto>> ListarFiliaisAsync(CancellationToken ct)
     {
         var usuarioId = ExigirUsuario();
+        var empresaId = ExigirEmpresa();
         await ExigirPermissaoAsync(usuarioId, "estoque.consultar", ct);
-        return await db.UsuariosFiliais.AsNoTracking()
-            .Where(x => x.UsuarioId == usuarioId)
-            .Join(db.Filiais.AsNoTracking().Where(x => x.Ativa),
+        var filiais = await db.UsuariosFiliais.AsNoTracking()
+            .Where(x => x.UsuarioId == usuarioId && x.EmpresaId == empresaId)
+            .Join(db.Filiais.AsNoTracking().Where(x => x.EmpresaId == empresaId && x.Ativa),
                 vinculo => vinculo.FilialId,
                 filial => filial.Id,
-                (_, filial) => new FilialEstoqueDto(filial.Id, filial.Codigo, filial.Nome))
+                (_, filial) => new { filial.Id, filial.Codigo, filial.Nome })
             .OrderBy(x => x.Nome)
             .ToListAsync(ct);
+        return filiais.Select(x => new FilialEstoqueDto(x.Id, x.Codigo, x.Nome)).ToArray();
     }
 
     public async Task<IReadOnlyList<ProdutoEstoqueDto>> ListarProdutosAsync(Guid filialId, CancellationToken ct)

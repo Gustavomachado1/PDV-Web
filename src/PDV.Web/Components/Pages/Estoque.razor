@@ -482,7 +482,9 @@ else
     private void Falha(Exception ex)
     {
         _sucesso = null;
-        _erro = ex.Message;
+        _erro = ex is HttpRequestException erroHttp && erroHttp.StatusCode is null
+            ? "Não foi possível acessar a API. Tente novamente."
+            : ex.Message;
     }
 
     private static string NomeTipo(TipoMovimentoEstoque tipo) => tipo switch
