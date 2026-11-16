@@ -31,6 +31,51 @@ public sealed class EstoqueService(
         return filiais.Select(x => new FilialEstoqueDto(x.Id, x.Codigo, x.Nome)).ToArray();
     }
 
+    public async Task<ConfiguracaoEstoqueNegativoDto> ObterConfiguracaoEstoqueNegativoAsync(
+        Guid filialId, CancellationToken ct)
+    {
+        await ExigirAcessoAsync(filialId, "estoque.consultar", ct);
+        var filial = await db.Filiais.AsNoTracking()
+            .Where(x => x.Id == filialId)
+            .Select(x => new { x.EmpresaId, x.PermiteEstoqueNegativo })
+            .SingleOrDefaultAsync(ct)
+            ?? throw EstoqueException.NaoEncontrado("A filial não foi encontrada para este usuário.");
+        var permiteNaEmpresa = await db.Empresas.AsNoTracking()
+            .Where(x => x.Id == filial.EmpresaId)
+            .Select(x => x.PermiteEstoqueNegativo)
+            .SingleAsync(ct);
+        return new ConfiguracaoEstoqueNegativoDto(
+            permiteNaEmpresa,
+            filial.PermiteEstoqueNegativo,
+            filial.PermiteEstoqueNegativo ?? permiteNaEmpresa);
+    }
+
+    public async Task AtualizarConfiguracaoEstoqueNegativoEmpresaAsync(
+        Guid filialId, ConfigurarEstoqueNegativoEmpresaRequest? request, CancellationToken ct)
+    {
+        await ExigirAcessoAsync(filialId, "estoque.negativo.configurar", ct);
+        if (request is null || request.PermiteEstoqueNegativo is null)
+            throw EstoqueException.Validacao("Informe se a empresa permite estoque negativo.");
+
+        var empresa = await db.Empresas.SingleOrDefaultAsync(ct)
+            ?? throw EstoqueException.NaoEncontrado("A empresa da sessão não foi encontrada.");
+        empresa.PermiteEstoqueNegativo = request.PermiteEstoqueNegativo.Value;
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task AtualizarConfiguracaoEstoqueNegativoFilialAsync(
+        Guid filialId, ConfigurarEstoqueNegativoFilialRequest? request, CancellationToken ct)
+    {
+        await ExigirAcessoAsync(filialId, "estoque.negativo.configurar", ct);
+        if (request is null)
+            throw EstoqueException.Validacao("Informe a configuração da filial ou selecione a herança da empresa.");
+
+        var filial = await db.Filiais.SingleOrDefaultAsync(x => x.Id == filialId, ct)
+            ?? throw EstoqueException.NaoEncontrado("A filial não foi encontrada para este usuário.");
+        filial.PermiteEstoqueNegativo = request.PermiteEstoqueNegativo;
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyList<ProdutoEstoqueDto>> ListarProdutosAsync(Guid filialId, CancellationToken ct)
     {
         await ExigirAcessoAsync(filialId, "estoque.consultar", ct);
@@ -128,6 +173,17 @@ public sealed class EstoqueService(
         if (!await db.Produtos.AnyAsync(x => x.Id == request.ProdutoId, ct))
             throw EstoqueException.NaoEncontrado("O produto não foi encontrado nesta empresa.");
 
+        if (request.Tipo == TipoMovimentoEstoque.SaidaManual)
+        {
+            var saldoAtual = await db.SaldosEstoque.AsNoTracking()
+                .Where(x => x.FilialId == filialId && x.ProdutoId == request.ProdutoId)
+                .Select(x => (decimal?)x.Quantidade)
+                .SingleOrDefaultAsync(ct) ?? 0;
+            if (saldoAtual - request.Quantidade < 0 &&
+                !await PermiteEstoqueNegativoAsync(filialId, ct))
+                throw EstoqueException.Conflito("A operação resultaria em estoque negativo, desabilitado para esta filial.");
+        }
+
         var codigoPermissao = CodigoPermissaoMovimento(request.Tipo);
         var momento = timeProvider.GetUtcNow().UtcDateTime;
         var movimento = new MovimentoEstoque
@@ -200,14 +256,14 @@ public sealed class EstoqueService(
         if (movimento.Situacao != SituacaoMovimentoEstoque.AguardandoAutorizacao ||
             movimento.AutorizacaoOperacao.Resultado != ResultadoAutorizacao.Pendente)
             throw EstoqueException.Conflito("A solicitação já foi decidida.");
+        if (!await autorizacao.TemPermissaoAsync(
+                aprovador.Id, movimento.AutorizacaoOperacao.Operacao, ct))
+            throw EstoqueException.Proibido("O autorizador não possui a permissão específica desta operação.");
 
         var agora = timeProvider.GetUtcNow().UtcDateTime;
-        movimento.AutorizadorId = aprovador.Id;
-        movimento.AutorizacaoOperacao.AutorizadorId = aprovador.Id;
-        movimento.AutorizacaoOperacao.DecididaEmUtc = agora;
         if (request.Aprovar.Value)
         {
-            await AplicarMovimentoAsync(movimento, ct);
+            await AplicarMovimentoAsync(movimento, aprovador.Id, ct);
             movimento.Situacao = SituacaoMovimentoEstoque.Concluido;
             movimento.ConcluidoEmUtc = agora;
             movimento.AutorizacaoOperacao.Resultado = ResultadoAutorizacao.Aprovada;
@@ -218,6 +274,9 @@ public sealed class EstoqueService(
             movimento.AutorizacaoOperacao.Resultado = ResultadoAutorizacao.Negada;
         }
 
+        movimento.AutorizadorId = aprovador.Id;
+        movimento.AutorizacaoOperacao.AutorizadorId = aprovador.Id;
+        movimento.AutorizacaoOperacao.DecididaEmUtc = agora;
         await db.SaveChangesAsync(ct);
         if (transacao is not null)
             await transacao.CommitAsync(ct);
@@ -383,10 +442,12 @@ public sealed class EstoqueService(
             x.ItensAjustados, x.Justificativa)).ToArray();
     }
 
-    private async Task AplicarMovimentoAsync(MovimentoEstoque movimento, CancellationToken ct)
+    private async Task AplicarMovimentoAsync(
+        MovimentoEstoque movimento, Guid autorizadorId, CancellationToken ct)
     {
         var saldo = await db.SaldosEstoque.SingleOrDefaultAsync(
             x => x.FilialId == movimento.FilialId && x.ProdutoId == movimento.ProdutoId, ct);
+        var novoSaldo = saldo is null;
         if (saldo is null)
         {
             saldo = new SaldoEstoque
@@ -395,16 +456,44 @@ public sealed class EstoqueService(
                 FilialId = movimento.FilialId,
                 ProdutoId = movimento.ProdutoId
             };
-            db.SaldosEstoque.Add(saldo);
         }
 
         var anterior = saldo.Quantidade;
         var sinal = movimento.Tipo == TipoMovimentoEstoque.EntradaManual ? 1m : -1m;
-        saldo.Quantidade = anterior + sinal * movimento.Quantidade;
-        if (saldo.Quantidade > QuantidadeMaxima || saldo.Quantidade < -QuantidadeMaxima)
+        var resultante = anterior + sinal * movimento.Quantidade;
+        if (resultante > QuantidadeMaxima || resultante < -QuantidadeMaxima)
             throw EstoqueException.Validacao("O saldo resultante excede a faixa numérica suportada.");
+        if (resultante < 0)
+        {
+            if (!await PermiteEstoqueNegativoAsync(movimento.FilialId, ct))
+                throw EstoqueException.Conflito(
+                    "A operação resultaria em estoque negativo, desabilitado para esta filial.");
+            if (!await autorizacao.TemPermissaoAsync(
+                    autorizadorId, "estoque.negativo.permitir", ct))
+                throw EstoqueException.Proibido(
+                    "O autorizador não possui permissão para permitir estoque negativo.");
+        }
+        saldo.Quantidade = resultante;
+        if (novoSaldo)
+            db.SaldosEstoque.Add(saldo);
         movimento.SaldoAnterior = anterior;
-        movimento.SaldoResultante = saldo.Quantidade;
+        movimento.SaldoResultante = resultante;
+    }
+
+    private async Task<bool> PermiteEstoqueNegativoAsync(Guid filialId, CancellationToken ct)
+    {
+        var filial = await db.Filiais.AsNoTracking()
+            .Where(x => x.Id == filialId)
+            .Select(x => new { x.EmpresaId, x.PermiteEstoqueNegativo })
+            .SingleOrDefaultAsync(ct)
+            ?? throw EstoqueException.NaoEncontrado("A filial não foi encontrada para este usuário.");
+        if (filial.PermiteEstoqueNegativo is bool permiteFilial)
+            return permiteFilial;
+
+        return await db.Empresas.AsNoTracking()
+            .Where(x => x.Id == filial.EmpresaId)
+            .Select(x => x.PermiteEstoqueNegativo)
+            .SingleAsync(ct);
     }
 
     private async Task<Guid> ExigirAcessoAsync(Guid filialId, string permissao, CancellationToken ct)
@@ -480,6 +569,12 @@ public sealed record DecidirMovimentoEstoqueRequest(
     bool? Aprovar, string Login, string Senha);
 public sealed record ConfigurarEstoqueRequest(
     decimal? EstoqueMinimo, decimal? EstoqueIdeal, bool? Disponivel);
+public sealed record ConfiguracaoEstoqueNegativoDto(
+    bool PermiteEstoqueNegativoEmpresa,
+    bool? PermiteEstoqueNegativoFilial,
+    bool PermiteEstoqueNegativoEfetivo);
+public sealed record ConfigurarEstoqueNegativoEmpresaRequest(bool? PermiteEstoqueNegativo);
+public sealed record ConfigurarEstoqueNegativoFilialRequest(bool? PermiteEstoqueNegativo);
 public sealed record ItemContagemEstoqueRequest(Guid ProdutoId, decimal QuantidadeContada);
 public sealed record ConcluirInventarioEstoqueRequest(
     TipoInventarioEstoque Tipo, IReadOnlyList<ItemContagemEstoqueRequest>? Itens, string? Justificativa);

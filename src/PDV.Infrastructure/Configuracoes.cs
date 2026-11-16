@@ -12,6 +12,7 @@ internal class EmpresaConfig : IEntityTypeConfiguration<Empresa>
         b.Property(x => x.RazaoSocial).HasMaxLength(200).IsRequired();
         b.Property(x => x.NomeFantasia).HasMaxLength(200);
         b.Property(x => x.Cnpj).HasMaxLength(14).IsRequired();
+        b.Property(x => x.PermiteEstoqueNegativo).HasDefaultValue(false);
         b.HasIndex(x => x.Codigo).IsUnique();
         b.HasIndex(x => x.Cnpj).IsUnique();
     }
@@ -23,6 +24,7 @@ internal class FilialConfig : IEntityTypeConfiguration<Filial>
     {
         b.Property(x => x.Codigo).HasMaxLength(30).IsRequired();
         b.Property(x => x.Nome).HasMaxLength(200).IsRequired();
+        b.Property(x => x.PermiteEstoqueNegativo);
         b.HasIndex(x => new { x.EmpresaId, x.Codigo }).IsUnique();
         b.HasOne(x => x.Empresa).WithMany(e => e.Filiais).HasForeignKey(x => x.EmpresaId);
     }
