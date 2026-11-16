@@ -1,6 +1,7 @@
 @page "/catalogo"
 @attribute [Authorize]
 @using System.ComponentModel.DataAnnotations
+@using PDV.Domain
 @using PDV.Web.Autenticacao
 @inject CatalogoApiClient ApiCatalogo
 @inject IJSRuntime JS
@@ -164,7 +165,17 @@ else
                         </InputSelect>
                         <ValidationMessage For="() => _produtoForm.SubcategoriaId" />
                         <label class="form-label" for="produto-unidade">Unidade de medida</label>
-                        <InputText id="produto-unidade" class="form-control mb-2" @bind-Value="_produtoForm.UnidadeMedida" />
+                        <InputSelect id="produto-unidade" class="form-select mb-2" @bind-Value="_produtoForm.UnidadeMedida">
+                            <option value="">Selecione</option>
+                            @foreach (var codigo in UnidadesMedidaProduto.Codigos)
+                            {
+                                <option value="@codigo">@codigo</option>
+                            }
+                            @if (_produtoId is not null && !UnidadesMedidaProduto.EhValida(_produtoForm.UnidadeMedida))
+                            {
+                                <option value="@_produtoForm.UnidadeMedida">Unidade legada (@_produtoForm.UnidadeMedida)</option>
+                            }
+                        </InputSelect>
                         <ValidationMessage For="() => _produtoForm.UnidadeMedida" />
                         <label class="form-label" for="produto-codigos">Códigos de barras (um por linha)</label>
                         <InputTextArea id="produto-codigos" class="form-control mb-2" rows="3" @bind-Value="_produtoForm.CodigosBarras" />
@@ -545,8 +556,7 @@ else
         [Required(ErrorMessage = "Selecione uma categoria.")]
         public Guid? SubcategoriaId { get; set; }
 
-        [Required(ErrorMessage = "Informe a unidade de medida.")]
-        [StringLength(30)]
+        [Required(ErrorMessage = "Selecione a unidade de medida.")]
         public string UnidadeMedida { get; set; } = "";
 
         public string CodigosBarras { get; set; } = "";
