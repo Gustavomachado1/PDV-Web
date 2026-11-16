@@ -271,7 +271,7 @@ public static class CatalogoEndpoints
         grupo.MapPut("/produtos/{id:guid}", async (
             Guid id, ProdutoRequest? request, PdvDbContext db, CancellationToken ct) =>
         {
-            var erro = ValidarProduto(request);
+            var erro = ValidarProduto(request, validarUnidadeMedida: false);
             if (erro is not null)
                 return erro;
 
@@ -285,13 +285,16 @@ public static class CatalogoEndpoints
             if (produto is null)
                 return Results.NotFound();
 
+            if (!UnidadesMedidaProduto.PodeAtualizar(dados.UnidadeMedida, produto.UnidadeMedida))
+                return Erro("unidadeMedida", "Selecione uma unidade de medida válida.");
+
             var codigos = NormalizarCodigos(dados.CodigosBarras);
             if (codigos.Length > 0 && await ExisteCodigoDuplicadoAsync(db, codigos, id, ct))
                 return Erro("codigosBarras", "Um ou mais códigos de barras já foram cadastrados nesta empresa.");
 
             produto.Descricao = dados.Descricao!.Trim();
             produto.SubcategoriaId = dados.SubcategoriaId;
-            produto.UnidadeMedida = dados.UnidadeMedida!.Trim();
+            produto.UnidadeMedida = dados.UnidadeMedida!;
             produto.Status = dados.Status;
             produto.UsoInterno = dados.UsoInterno;
             var codigosSolicitados = new HashSet<string>(codigos, StringComparer.OrdinalIgnoreCase);
@@ -319,7 +322,7 @@ public static class CatalogoEndpoints
         return endpoints;
     }
 
-    private static IResult? ValidarProduto(ProdutoRequest? request)
+    private static IResult? ValidarProduto(ProdutoRequest? request, bool validarUnidadeMedida = true)
     {
         if (request is null)
             return Erro("produto", "Informe os dados do produto.");
@@ -327,8 +330,8 @@ public static class CatalogoEndpoints
             return Erro("descricao", "Informe uma descrição com até 200 caracteres.");
         if (request.SubcategoriaId == Guid.Empty)
             return Erro("subcategoriaId", "Selecione uma subcategoria.");
-        if (!NomeValido(request.UnidadeMedida, 30))
-            return Erro("unidadeMedida", "Informe uma unidade de medida com até 30 caracteres.");
+        if (validarUnidadeMedida && !UnidadesMedidaProduto.EhValida(request.UnidadeMedida))
+            return Erro("unidadeMedida", "Selecione uma unidade de medida válida.");
         if (!Enum.IsDefined(request.Status))
             return Erro("status", "Selecione uma situação válida.");
 
