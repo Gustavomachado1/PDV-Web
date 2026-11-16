@@ -15,6 +15,7 @@ builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<AutenticacaoService>();
 builder.Services.AddScoped<ProvisionamentoInicialService>();
+builder.Services.AddScoped<ProvisionamentoAssinaturaLocalService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
 builder.Services.AddInfrastructure(
     builder.Configuration.GetConnectionString("PdvWeb")
@@ -31,7 +32,27 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
-if (args.Contains("--bootstrap", StringComparer.Ordinal))
+var solicitouBootstrap = args.Contains("--bootstrap", StringComparer.Ordinal);
+var solicitouAssinaturaLocal = args.Contains("--provisionar-assinatura-local", StringComparer.Ordinal);
+if (solicitouBootstrap && solicitouAssinaturaLocal)
+    throw new InvalidOperationException("Execute apenas uma operação de provisionamento por vez.");
+
+if (solicitouAssinaturaLocal)
+{
+    if (!app.Environment.IsDevelopment())
+        throw new InvalidOperationException(
+            "A recuperação da assinatura só pode ser executada com ASPNETCORE_ENVIRONMENT=Development.");
+
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<ProvisionamentoAssinaturaLocalService>()
+        .ExecutarAsync(
+            args.Contains("--confirmar-banco-local", StringComparer.Ordinal),
+            app.Lifetime.ApplicationStopping);
+    Console.WriteLine("Assinatura local Essencial provisionada sem cobrança.");
+    return;
+}
+
+if (solicitouBootstrap)
 {
     var configuracao = ProvisionamentoInicialConfiguracao.CarregarDoAmbiente();
     await using var scope = app.Services.CreateAsyncScope();

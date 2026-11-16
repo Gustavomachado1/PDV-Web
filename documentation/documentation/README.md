@@ -31,6 +31,8 @@ Os módulos de negócio do MVP ainda estão pendentes. O comando de provisioname
 
 A API lê a connection string `ConnectionStrings:PdvWeb` em `src/PDV.API/appsettings.Development.json`. Ajuste-a para a instância disponível no ambiente local. A interface lê `Api:BaseUrl` em `src/PDV.Web/appsettings.Development.json`; o valor do repositório aponta para `https://localhost:7296/`. Mantenha credenciais e configurações pessoais fora dos commits.
 
+Não cole connection strings, senhas ou outros segredos no chat. Antes de qualquer comando administrativo, confira localmente se `ASPNETCORE_ENVIRONMENT` é `Development` e se `ConnectionStrings__PdvWeb` (ou `appsettings.Development.json`) aponta para o SQL Server e o banco de desenvolvimento corretos. O nome do ambiente, sozinho, não confirma o destino da conexão.
+
 ### Provisionamento inicial
 
 O comando `--bootstrap` executa uma única vez o provisionamento no banco configurado para a API e encerra o processo sem iniciar o servidor HTTP. A migration inicial precisa estar aplicada antes da execução. Configure os valores abaixo no ambiente do processo que executará o comando:
@@ -58,6 +60,19 @@ dotnet run --project src/PDV.API/PDV.API.csproj -- --bootstrap
 ```
 
 O pré-requisito é .NET 10 SDK, acesso ao SQL Server configurado e migration atualizada. Não há rota pública de bootstrap; executar o comando novamente falha sem alterar os dados existentes.
+
+### Recuperar a assinatura local
+
+Se o bootstrap já criou a empresa, mas não há assinatura, use o comando separado abaixo. Ele não inicia o servidor HTTP, não executa migrations e só funciona em `Development`; também exige confirmação explícita do banco local. Não use em produção nem em qualquer banco cujo destino não tenha sido confirmado.
+
+Na raiz do repositório, confira a connection string localmente sem copiá-la para o chat e execute em PowerShell:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project .\src\PDV.API\PDV.API.csproj -- --provisionar-assinatura-local --confirmar-banco-local
+```
+
+O comando exige exatamente uma empresa ativa com ao menos uma filial ativa e nenhuma assinatura ou histórico de assinatura. Cria o plano Essencial com 1 filial, 2 caixas e 3 usuários, ou reutiliza o plano ativo com esses mesmos limites sem modificá-lo. Se o plano existente divergir, ou houver empresas, assinaturas, histórico ou estado parcial ambíguos, o comando falha antes de gravar e orienta a revisão manual. A assinatura criada é ativa, replica esses limites e registra mensalidade de R$ 0,00 exclusivamente para desenvolvimento local, sem cobrança. Não existe endpoint HTTP para esta recuperação.
 
 ## Restaurar, compilar e testar
 

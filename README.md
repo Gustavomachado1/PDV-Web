@@ -173,9 +173,9 @@ As operações devem respeitar as regras de autorização, o isolamento entre em
 - Novas gravações recebem a empresa do contexto; gravações sem empresa válida ou que tentem alterar dados de outra empresa são rejeitadas.
 - Auditoria automática de alterações com valores anteriores e posteriores em JSON. O fluxo normal do EF Core impede alteração ou exclusão de registros de auditoria.
 
-**Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 13 testes da solução.
+**Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 25 testes da solução.
 
-O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`. O plano padrão permanente é Essencial (1 filial, 2 caixas e 3 usuários); os demais dados são fornecidos pelo ambiente, sem credenciais padrão. Consulte o [guia técnico](documentation/documentation/README.md). Os módulos de negócio do MVP e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
+O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`. Para recuperar uma assinatura ausente em um banco local já provisionado, há o comando explícito `--provisionar-assinatura-local`, restrito a Development e com confirmação do banco; ele cria a assinatura Essencial ativa sem cobrança somente para desenvolvimento local. Consulte o [guia técnico](documentation/documentation/README.md) para conferir o banco e executar os comandos com segurança. Os módulos de negócio do MVP e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
 
 O armazenamento de tickets de autenticação da interface web é mantido em memória e atende à configuração atual de instância única. Execuções com múltiplas instâncias ou que precisem sobreviver a reinícios exigirão armazenamento distribuído compartilhado e um chaveiro compartilhado de ASP.NET Core Data Protection. Consulte [a documentação da autenticação web](documentation/documentation/04-AUTENTICACAO-WEB.md).
 
