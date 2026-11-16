@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddMemoryCache();
+builder.Services.AddScoped<CatalogoApiClient>();
 builder.Services.AddSingleton<ITicketStore, ArmazenamentoTicketAutenticacao>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

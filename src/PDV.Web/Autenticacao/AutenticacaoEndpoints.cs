@@ -89,6 +89,7 @@ public static class AutenticacaoEndpoints
                 new(ClaimTypes.NameIdentifier, usuario.UsuarioId.ToString()),
                 new(ClaimTypes.Name, formulario.Login.Trim()),
                 new("empresa_id", usuario.EmpresaId.ToString()),
+                new("api_access_token", sessao.AccessToken),
                 new("sessao_expira_em", sessao.ExpiresAtUtc.ToUnixTimeSeconds().ToString())
             };
             if (usuario.FilialId is Guid filialId)

@@ -4,7 +4,7 @@
 
 Plataforma web de gestão comercial e ponto de venda destinada a pequenos e médios varejistas, com suporte a múltiplas empresas, filiais e caixas.
 
-O projeto está em desenvolvimento. A fundação técnica, o isolamento por empresa e o fluxo de autenticação da API e da interface web já estão implementados; os módulos de negócio do MVP ainda estão por desenvolver.
+O projeto está em desenvolvimento. A fundação técnica, o isolamento por empresa, o fluxo de autenticação e o cadastro inicial do catálogo já estão implementados; os demais módulos de negócio do MVP ainda estão por desenvolver.
 
 ## 1. Objetivo do projeto
 
@@ -88,15 +88,15 @@ Responsável pela persistência com Entity Framework Core e SQL Server, filtros 
 
 **PDV.API**
 
-Responsável pelos endpoints, autenticação e integração dos serviços. Também expõe Swagger em desenvolvimento e o hub inicial de notificações.
+Responsável pelos endpoints, autenticação e integração dos serviços. Também expõe Swagger em desenvolvimento, o hub inicial de notificações e a API autenticada para departamentos, categorias, subcategorias, produtos e códigos de barras.
 
 **PDV.Web**
 
-Interface Blazor Web App com renderização interativa no servidor e telas iniciais de login e sessão autenticada.
+Interface Blazor Web App com renderização interativa no servidor, telas de login e sessão autenticada e o fluxo inicial de gestão do catálogo.
 
 ## 4. Funcionalidades previstas para o MVP
 
-As funcionalidades abaixo descrevem o escopo pretendido; exceto pela fundação e autenticação descritas na seção 6, ainda não representam módulos de negócio concluídos.
+As funcionalidades abaixo descrevem o escopo pretendido; exceto pela fundação, autenticação e cadastro inicial do catálogo descritos na seção 6, ainda não representam módulos de negócio concluídos.
 
 ### Fundação e segurança
 - Autenticação de usuários.
@@ -108,7 +108,8 @@ As funcionalidades abaixo descrevem o escopo pretendido; exceto pela fundação 
 - Gestão de sessões.
 
 ### Produtos e operação
-- Cadastro de produtos, categorias e informações comerciais.
+- Cadastro centralizado de departamentos, categorias, subcategorias, produtos, unidades de medida e códigos de barras.
+- Custos, preços, fiscal, estoque e operação comercial não fazem parte deste fluxo inicial.
 - Preparação fiscal interna no cadastro de produtos, sem emissão fiscal.
 - Gestão de estoque e inventário.
 - Promoções.
@@ -173,9 +174,33 @@ As operações devem respeitar as regras de autorização, o isolamento entre em
 - Novas gravações recebem a empresa do contexto; gravações sem empresa válida ou que tentem alterar dados de outra empresa são rejeitadas.
 - Auditoria automática de alterações com valores anteriores e posteriores em JSON. O fluxo normal do EF Core impede alteração ou exclusão de registros de auditoria.
 
-**Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 25 testes da solução.
+**Validação mais recente:** `dotnet build` concluiu com sucesso e `dotnet test` aprovou os 29 testes da solução.
 
-O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`. Para recuperar uma assinatura ausente em um banco local já provisionado, há o comando explícito `--provisionar-assinatura-local`, restrito a Development e com confirmação do banco; ele cria a assinatura Essencial ativa sem cobrança somente para desenvolvimento local. Consulte o [guia técnico](documentation/documentation/README.md) para conferir o banco e executar os comandos com segurança. Os módulos de negócio do MVP e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
+O provisionamento inicial de empresa, filial, conta Administrador, perfis, permissões e plano é feito pelo comando administrativo de execução única `--bootstrap`. Para recuperar uma assinatura ausente em um banco local já provisionado, há o comando explícito `--provisionar-assinatura-local`, restrito a Development e com confirmação do banco; ele cria a assinatura Essencial ativa sem cobrança somente para desenvolvimento local. Consulte o [guia técnico](documentation/documentation/README.md) para conferir o banco e executar os comandos com segurança. Os demais módulos de negócio do MVP e a proteção da auditoria por permissões do banco de dados permanecem pendentes.
+
+### Migrações e catálogo padrão
+
+As migrações `CatalogoInicial`, `HierarquiaCatalogo` e `HistoricoCodigosBarras` criam as tabelas de departamentos, categorias, subcategorias, produtos e códigos de barras, e cadastram a permissão de catálogo para os perfis Administrador existentes. Elas foram geradas, mas não foram aplicadas a nenhum banco pelo agente. Antes de aplicar, faça backup e confirme que a connection string aponta para o ambiente e banco corretos. Gere e revise o SQL idempotente:
+
+```powershell
+dotnet ef migrations script --idempotent --project src\PDV.Infrastructure\PDV.Infrastructure.csproj --startup-project src\PDV.API\PDV.API.csproj --output catalogo-migrations.sql
+```
+
+Após revisar o script e obter a aprovação operacional, aplique a migração de forma explícita:
+
+```powershell
+dotnet ef database update --project src\PDV.Infrastructure\PDV.Infrastructure.csproj --startup-project src\PDV.API\PDV.API.csproj
+```
+
+O seed padrão é uma operação separada, repetível e limitada à empresa informada. Depois de confirmar novamente a connection string, defina `PDV_CATALOGO_EMPRESA_ID`; opcionalmente defina `PDV_CATALOGO_SEGMENTO` como `Mercado/Alimentação`, `Mercado/Farmácia`, `Moda`, `Papelaria/Tech`, `Bazar/Construção` ou `Geral - Uso Interno/Operacional`. Sem o filtro, todas as árvores padrão serão adicionadas:
+
+```powershell
+$env:PDV_CATALOGO_EMPRESA_ID = "<GUID-da-empresa>"
+$env:PDV_CATALOGO_SEGMENTO = "Moda" # opcional
+dotnet run --project src\PDV.API\PDV.API.csproj -- --seed-catalogo-padrao --confirmar-catalogo-padrao
+```
+
+O seed não substitui nem exclui cadastros existentes. Códigos removidos do cadastro ativo permanecem preservados e auditáveis, e não podem ser reutilizados por outro produto da empresa. Não execute a migração nem o seed sem backup, validação do ambiente e autorização de quem administra o banco.
 
 O armazenamento de tickets de autenticação da interface web é mantido em memória e atende à configuração atual de instância única. Execuções com múltiplas instâncias ou que precisem sobreviver a reinícios exigirão armazenamento distribuído compartilhado e um chaveiro compartilhado de ASP.NET Core Data Protection. Consulte [a documentação da autenticação web](documentation/documentation/04-AUTENTICACAO-WEB.md).
 
@@ -184,7 +209,7 @@ O armazenamento de tickets de autenticação da interface web é mantido em mem�
 | Fase | Descrição | Situação |
 |---|---|---|
 | 1 | Fundação, isolamento e autenticação | Parcialmente implementada; autenticação da API e login web integrados |
-| 2 | Produtos, cadastros e estoque | Planejada |
+| 2 | Produtos, cadastros e estoque | Parcialmente implementada; catálogo inicial disponível |
 | 3 | Frente de caixa e relatórios | Planejada |
 | 4 | Clientes, devoluções e créditos | Planejada |
 | 5 | Operação offline | Planejada |
@@ -195,7 +220,7 @@ A implementação seguirá a sequência estabelecida no documento oficial de Esc
 ## 8. Próximas atividades
 
 1. Completar os requisitos de acesso ainda pendentes, como recuperação de senha, gestão de usuários e permissões, PIN e autorização de operações sensíveis.
-2. Implementar os módulos de negócio do MVP, começando por produtos, condições comerciais, estoque e inventário.
+2. Completar produtos e avançar para condições comerciais, estoque e inventário.
 5. Restringir UPDATE e DELETE na tabela de auditoria também por meio das permissões do banco de dados.
 6. Definir o contexto administrativo global do SaaS sem comprometer o isolamento entre empresas.
 7. Definir os limites concretos de operação offline e avaliar a tecnologia da frente de caixa para esse cenário.

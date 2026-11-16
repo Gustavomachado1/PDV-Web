@@ -180,6 +180,116 @@ namespace PDV.Infrastructure.Migrations
                     b.ToTable("Autorizacoes");
                 });
 
+            modelBuilder.Entity("PDV.Domain.Categoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("DepartamentoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "DepartamentoId", "Nome")
+                        .IsUnique();
+
+                    b.ToTable("Categorias");
+                });
+
+            modelBuilder.Entity("PDV.Domain.CodigoBarrasProduto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "Codigo")
+                        .IsUnique();
+
+                    b.HasIndex("EmpresaId", "ProdutoId");
+
+                    b.ToTable("CodigosBarrasProdutos");
+                });
+
+            modelBuilder.Entity("PDV.Domain.Departamento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<string>("Segmento")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "Nome")
+                        .IsUnique();
+
+                    b.ToTable("Departamentos");
+                });
+
             modelBuilder.Entity("PDV.Domain.Empresa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -455,6 +565,52 @@ namespace PDV.Infrastructure.Migrations
                     b.ToTable("Planos");
                 });
 
+            modelBuilder.Entity("PDV.Domain.Produto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SubcategoriaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("UnidadeMedida")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<bool>("UsoInterno")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "Descricao");
+
+                    b.HasIndex("EmpresaId", "SubcategoriaId");
+
+                    b.ToTable("Produtos");
+                });
+
             modelBuilder.Entity("PDV.Domain.RegistroAuditoria", b =>
                 {
                     b.Property<Guid>("Id")
@@ -567,6 +723,40 @@ namespace PDV.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Sessoes");
+                });
+
+            modelBuilder.Entity("PDV.Domain.Subcategoria", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CategoriaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "CategoriaId", "Nome")
+                        .IsUnique();
+
+                    b.ToTable("Subcategorias");
                 });
 
             modelBuilder.Entity("PDV.Domain.Usuario", b =>
@@ -710,6 +900,30 @@ namespace PDV.Infrastructure.Migrations
                     b.Navigation("Plano");
                 });
 
+            modelBuilder.Entity("PDV.Domain.Categoria", b =>
+                {
+                    b.HasOne("PDV.Domain.Departamento", "Departamento")
+                        .WithMany("Categorias")
+                        .HasForeignKey("EmpresaId", "DepartamentoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Departamento");
+                });
+
+            modelBuilder.Entity("PDV.Domain.CodigoBarrasProduto", b =>
+                {
+                    b.HasOne("PDV.Domain.Produto", "Produto")
+                        .WithMany("CodigosBarras")
+                        .HasForeignKey("EmpresaId", "ProdutoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Produto");
+                });
+
             modelBuilder.Entity("PDV.Domain.Filial", b =>
                 {
                     b.HasOne("PDV.Domain.Empresa", "Empresa")
@@ -740,6 +954,30 @@ namespace PDV.Infrastructure.Migrations
                     b.Navigation("Permissao");
                 });
 
+            modelBuilder.Entity("PDV.Domain.Produto", b =>
+                {
+                    b.HasOne("PDV.Domain.Subcategoria", "Subcategoria")
+                        .WithMany("Produtos")
+                        .HasForeignKey("EmpresaId", "SubcategoriaId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Subcategoria");
+                });
+
+            modelBuilder.Entity("PDV.Domain.Subcategoria", b =>
+                {
+                    b.HasOne("PDV.Domain.Categoria", "Categoria")
+                        .WithMany("Subcategorias")
+                        .HasForeignKey("EmpresaId", "CategoriaId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Categoria");
+                });
+
             modelBuilder.Entity("PDV.Domain.Usuario", b =>
                 {
                     b.HasOne("PDV.Domain.Perfil", "Perfil")
@@ -751,6 +989,16 @@ namespace PDV.Infrastructure.Migrations
                     b.Navigation("Perfil");
                 });
 
+            modelBuilder.Entity("PDV.Domain.Categoria", b =>
+                {
+                    b.Navigation("Subcategorias");
+                });
+
+            modelBuilder.Entity("PDV.Domain.Departamento", b =>
+                {
+                    b.Navigation("Categorias");
+                });
+
             modelBuilder.Entity("PDV.Domain.Empresa", b =>
                 {
                     b.Navigation("Filiais");
@@ -759,6 +1007,16 @@ namespace PDV.Infrastructure.Migrations
             modelBuilder.Entity("PDV.Domain.Perfil", b =>
                 {
                     b.Navigation("Permissoes");
+                });
+
+            modelBuilder.Entity("PDV.Domain.Produto", b =>
+                {
+                    b.Navigation("CodigosBarras");
+                });
+
+            modelBuilder.Entity("PDV.Domain.Subcategoria", b =>
+                {
+                    b.Navigation("Produtos");
                 });
 #pragma warning restore 612, 618
         }

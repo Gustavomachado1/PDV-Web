@@ -230,9 +230,9 @@ Os requisitos poderão ser detalhados e complementados durante o levantamento, d
 | RF031 | O sistema deverá permitir cadastrar produtos. | Alta |
 | RF032 | O sistema deverá permitir editar os dados dos produtos conforme permissões. | Alta |
 | RF033 | O sistema deverá permitir ativar, inativar e bloquear produtos. | Alta |
-| RF034 | O sistema deverá permitir cadastrar descrição, categoria, unidade de medida e demais informações do produto. | Alta |
+| RF034 | O sistema deverá permitir cadastrar produtos com descrição, unidade de medida e subcategoria obrigatórias; categoria e departamento serão determinados pela hierarquia da subcategoria. | Alta |
 | RF035 | O sistema deverá permitir cadastrar um ou mais códigos de barras vinculados ao mesmo produto. | Alta |
-| RF036 | Cada código de barras deverá ser único entre os produtos ativos da mesma empresa, não podendo identificar simultaneamente produtos diferentes. | Alta |
+| RF036 | Cada código de barras deverá ser único entre os produtos da mesma empresa, inclusive inativos, não podendo identificar simultaneamente produtos diferentes. | Alta |
 | RF037 | O sistema deverá permitir cadastrar produtos sem código de barras. | Alta |
 | RF038 | O sistema deverá permitir pesquisar produtos por descrição ou código de barras. | Alta |
 | RF039 | A pesquisa por descrição deverá aceitar correspondência parcial. | Alta |
@@ -273,8 +273,11 @@ O sistema deverá permitir que o usuário visualize o resultado antes de confirm
 
 ## 7.4. Regras de integridade
 
-- Um produto não poderá possuir mais de um código de barras.
-- Não poderão existir códigos de barras duplicados dentro da mesma empresa.
+- Um produto poderá possuir um ou mais códigos de barras, sem repetições no próprio produto.
+- Códigos de barras não poderão se repetir entre produtos da mesma empresa, inclusive após a desativação do vínculo anterior.
+- A remoção de um código do cadastro ativo deverá preservar seu registro histórico e auditável.
+- A subcategoria será obrigatória; categoria e departamento serão obtidos pela hierarquia cadastrada.
+- O cadastro poderá identificar produtos para uso interno, distintos dos destinados à revenda.
 - Produtos inativos ou bloqueados não poderão ser incluídos em novas vendas.
 - Alterações de custo e preço deverão ser auditáveis.
 - A alteração de preço deverá respeitar as permissões do usuário.
@@ -2984,21 +2987,20 @@ Regras:
 
 ### 8.175. Exclusão de categorias com produtos vinculados
 
-**RF249 — Transferência de produtos antes da exclusão da categoria**
+**RF249 — Movimentação antes da exclusão da categoria**
 
-O sistema deverá exigir a transferência dos produtos diretamente vinculados a uma categoria antes de permitir sua exclusão, exceto nos casos específicos tratados nos RF254, RF265 e RF266.
+O sistema deverá impedir a exclusão de uma categoria enquanto houver subcategorias vinculadas. As subcategorias e os produtos associados deverão ser movidos para uma categoria de destino da mesma empresa antes da exclusão.
 
 **Regras:**
 
-- Antes da exclusão, o sistema deverá verificar se existem produtos diretamente vinculados à categoria.
-- Quando existirem produtos diretamente vinculados e a categoria não possuir subcategorias, deverá solicitar a seleção de uma categoria de destino.
-- Todos os produtos diretamente vinculados deverão ser transferidos para a categoria selecionada.
+- Antes da exclusão, o sistema deverá verificar se existem subcategorias vinculadas à categoria.
+- A exclusão deverá ser bloqueada enquanto existirem subcategorias; elas poderão ser movidas para outra categoria da mesma empresa.
+- Os produtos deverão permanecer vinculados às suas subcategorias durante a movimentação.
 - A categoria de destino deverá pertencer à mesma empresa.
+- Produtos deverão ser movidos para outra subcategoria da mesma empresa antes de excluir sua subcategoria atual.
+- A exclusão da categoria somente será concluída após a remoção ou movimentação de todas as subcategorias.
 - A transferência deverá preservar os dados, históricos e demais vínculos dos produtos.
-- A exclusão somente será concluída após a confirmação da transferência de todos os produtos diretamente vinculados.
-- Categorias principais que possuam subcategorias deverão seguir os procedimentos específicos dos RF254 e RF266.
-- A exclusão de subcategorias deverá seguir o RF265, que permite deixar os produtos sem categoria.
-- Caso ocorra uma falha durante a transferência, a exclusão deverá ser cancelada, sem deixar produtos parcialmente transferidos.
+- Caso ocorra uma falha durante a movimentação, as alterações deverão ser canceladas sem deixar produtos parcialmente transferidos.
 - A operação deverá ser registrada no histórico, identificando usuário, categorias envolvidas, quantidade de produtos, data e hora.
 - O processamento deverá ser validado pelo backend.
 
@@ -3870,7 +3872,7 @@ Regras:
 1. Um produto poderá possuir vários códigos de barras ativos.
 2. Todos os códigos vinculados deverão identificar o mesmo produto durante a leitura no PDV.
 3. A leitura de qualquer um desses códigos deverá localizar o cadastro original do produto.
-4. Cada código de barras deverá ser único entre os produtos ativos da mesma empresa.
+4. Cada código de barras deverá ser único entre os produtos da mesma empresa, inclusive após a desativação do vínculo anterior.
 5. O sistema deverá impedir que o mesmo código seja associado a produtos diferentes simultaneamente.
 6. A inclusão, alteração e remoção de códigos deverão respeitar as permissões do usuário.
 7. O histórico de utilização dos códigos deverá ser preservado, conforme RF300.
