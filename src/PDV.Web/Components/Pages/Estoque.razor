@@ -4,6 +4,7 @@
 @using PDV.Domain
 @using PDV.Web.Autenticacao
 @inject EstoqueApiClient ApiEstoque
+@inject ILogger<Estoque> Logger
 
 <PageTitle>Estoque e inventário | PDV Web</PageTitle>
 
@@ -22,7 +23,11 @@
 {
     <p role="status">Carregando estoque...</p>
 }
-else if (_filiais.Count == 0)
+else if (EstadoListaFiliais == EstadoFiliaisEstoque.Estado.Falha)
+{
+    <p class="text-muted" role="status">Não foi possível carregar as filiais. Tente novamente.</p>
+}
+else if (EstadoListaFiliais == EstadoFiliaisEstoque.Estado.SemAcesso)
 {
     <div class="alert alert-info">Seu usuário não tem acesso a filiais com permissão de consulta de estoque.</div>
 }
@@ -315,23 +320,32 @@ else
     private string _loginAutorizador = "";
     private string _senhaAutorizador = "";
     private bool _carregando = true;
+    private bool _falhaCarregamentoFiliais;
     private string? _erro;
     private string? _sucesso;
+    private EstadoFiliaisEstoque.Estado EstadoListaFiliais =>
+        EstadoFiliaisEstoque.Avaliar(_carregando, _falhaCarregamentoFiliais, _filiais.Count);
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _filiais = (await ApiEstoque.ListarFiliaisAsync()).ToList();
+            try
+            {
+                _filiais = (await ApiEstoque.ListarFiliaisAsync()).ToList();
+            }
+            catch (Exception ex)
+            {
+                FalhaCarregamentoFiliais(ex);
+                return;
+            }
+
             if (_filiais.Count > 0)
             {
                 _filialId = _filiais[0].Id;
                 await CarregarFilialAsync();
             }
         }
-        catch (HttpRequestException ex) { Falha(ex); }
-        catch (InvalidOperationException ex) { Falha(ex); }
-        catch (UnauthorizedAccessException ex) { Falha(ex); }
         finally { _carregando = false; }
     }
 
@@ -485,6 +499,24 @@ else
         _erro = ex is HttpRequestException erroHttp && erroHttp.StatusCode is null
             ? "Não foi possível acessar a API. Tente novamente."
             : ex.Message;
+    }
+
+    private void FalhaCarregamentoFiliais(Exception ex)
+    {
+        _falhaCarregamentoFiliais = true;
+        _sucesso = null;
+        Logger.LogError(
+            "Failed to load stock branches. ExceptionType={ExceptionType}, StackTrace={StackTrace}",
+            ex.GetType().FullName,
+            ex.StackTrace);
+        _erro = ex switch
+        {
+            HttpRequestException erroHttp when erroHttp.StatusCode is null =>
+                "Não foi possível carregar as filiais. Tente novamente.",
+            HttpRequestException erroHttp => erroHttp.Message,
+            UnauthorizedAccessException erroAcesso => erroAcesso.Message,
+            _ => "Não foi possível carregar as filiais. Tente novamente."
+        };
     }
 
     private static string NomeTipo(TipoMovimentoEstoque tipo) => tipo switch

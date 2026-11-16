@@ -12,6 +12,21 @@ namespace PDV.API.Tests;
 
 public sealed class ApiErrorSanitizationTests
 {
+    [Theory]
+    [InlineData(true, false, 0, EstadoFiliaisEstoque.Estado.Carregando)]
+    [InlineData(false, true, 0, EstadoFiliaisEstoque.Estado.Falha)]
+    [InlineData(false, false, 0, EstadoFiliaisEstoque.Estado.SemAcesso)]
+    [InlineData(false, false, 1, EstadoFiliaisEstoque.Estado.Disponivel)]
+    public void EmptyFilialListDeniesAccessOnlyAfterSuccessfulLoad(
+        bool carregando,
+        bool falha,
+        int quantidadeFiliais,
+        EstadoFiliaisEstoque.Estado esperado)
+    {
+        Assert.Equal(esperado,
+            EstadoFiliaisEstoque.Avaliar(carregando, falha, quantidadeFiliais));
+    }
+
     [Fact]
     public async Task HttpClientDoesNotExposeErrorResponseBodyToUi()
     {
