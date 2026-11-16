@@ -1,0 +1,29 @@
+PDV Web — Fluxo de venda (PDV propriamente dito)
+Proposta de fatias de entrega e decisões-padrão para o fluxo de venda, apoiado no estoque por filial já integrado à main (PRs #11 e #12).
+1. Fatias propostas
+Cada fatia vira uma PR pequena, como as anteriores.
+1.  Caixa (sessão de caixa): abertura por usuário e filial, com valor inicial. Fechamento com conferência (esperado x informado).
+2.  Venda com itens: carrinho, produtos ativos na filial, preço, desconto simples e total.
+3.  Pagamento: dinheiro, cartão e PIX no começo, com troco no dinheiro. Pagamento misto fica para depois.
+4.  Baixa de estoque: cada venda finalizada gera movimentos de saída, usando a mesma estrutura do estoque atual.
+5.  Cancelamento/estorno: gera movimento de entrada de volta e fica registrado, sem apagar a venda.
+6.  Tela do PDV (Blazor): busca por código ou nome, lista de itens, total e finalização.
+2. Decisões-padrão propostas
+• Baixa de estoque na venda: a saída pode deixar o saldo negativo, como já está definido. A venda não exige autorização de segundo usuário, porque essa regra vale para movimentos manuais.
+• Produto não ativado na filial: não pode ser vendido, por causa da ativação explícita.
+• Preço: a venda guarda uma cópia do preço e do nome do produto no momento da venda, para que mudanças futuras no cadastro não alterem vendas antigas.
+• Transação única: a venda, os pagamentos e os movimentos de estoque são gravados juntos, tudo ou nada.
+• Venda finalizada não é editada nem apagada: só cancelada, com motivo, usuário e data.
+• Escopo de acesso: toda operação valida empresa e filial do usuário logado, igual ao que já foi feito no estoque.
+• Idempotência: a finalização recebe um identificador único gerado pela tela, para que um clique duplo ou um reenvio não crie duas vendas.
+• Sem emissão fiscal neste momento (NFC-e fica fora do MVP, salvo se a documentação disser o contrário).
+3. Informações necessárias do projeto
+Trechos apenas, sem appsettings, tokens nem connection strings:
+1.  Das documentações 02-ESCOPO-MVP e 03-REQUISITOS, as partes sobre caixa, venda e pagamento.
+2.  As entidades de Produto, ativação do produto por filial, movimento de estoque e saldo (classes e configuração do EF).
+3.  O serviço da aplicação que registra movimentos de estoque, para a venda reaproveitar a mesma regra em vez de duplicar.
+4.  Como a API identifica empresa e filial do usuário logado.
+4. Cuidados com o repositório
+• Criar uma branch a partir da main atualizada, por exemplo git switch -c feature/venda-caixa.
+• Na hora de commitar, usar git add com arquivos específicos, nunca git add ., para o pdv-migrations.sql não entrar junto.
+• A funcionalidade vai exigir migrations novas (caixa, venda, itens, pagamentos). Antes de qualquer dotnet ef database update, explicar o que a migration cria e aguardar autorização.

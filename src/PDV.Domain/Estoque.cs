@@ -1,6 +1,16 @@
 namespace PDV.Domain;
 
 public enum TipoMovimentoEstoque { EntradaManual = 1, SaidaManual = 2, AjusteInventario = 3 }
+public static class TipoMovimentoEstoqueExtensions
+{
+    public static decimal Sinal(this TipoMovimentoEstoque tipo) => tipo switch
+    {
+        TipoMovimentoEstoque.EntradaManual => 1m,
+        TipoMovimentoEstoque.SaidaManual => -1m,
+        _ => throw new InvalidOperationException(
+            $"O tipo de movimento {tipo} não tem sinal definido para aplicação direta no saldo.")
+    };
+}
 public enum SituacaoMovimentoEstoque { AguardandoAutorizacao = 1, Concluido = 2, Negado = 3 }
 public enum TipoInventarioEstoque { Completo = 1, Parcial = 2 }
 

@@ -386,7 +386,7 @@ public sealed class EstoqueService(
     private async Task AplicarMovimentoAsync(MovimentoEstoque movimento, CancellationToken ct)
     {
         var saldo = await db.SaldosEstoque.SingleOrDefaultAsync(
-            x => x.FilialId == movimento.FilialId && x.ProdutoId == movimento.ProdutoId, ct);
+            x => x.EmpresaId == movimento.EmpresaId && x.FilialId == movimento.FilialId && x.ProdutoId == movimento.ProdutoId, ct);
         if (saldo is null)
         {
             saldo = new SaldoEstoque
@@ -399,7 +399,7 @@ public sealed class EstoqueService(
         }
 
         var anterior = saldo.Quantidade;
-        var sinal = movimento.Tipo == TipoMovimentoEstoque.EntradaManual ? 1m : -1m;
+        var sinal = movimento.Tipo.Sinal();
         saldo.Quantidade = anterior + sinal * movimento.Quantidade;
         if (saldo.Quantidade > QuantidadeMaxima || saldo.Quantidade < -QuantidadeMaxima)
             throw EstoqueException.Validacao("O saldo resultante excede a faixa numérica suportada.");
