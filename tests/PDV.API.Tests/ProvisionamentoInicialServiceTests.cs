@@ -33,7 +33,7 @@ public class ProvisionamentoInicialServiceTests
         Assert.Contains(perfis, perfil => perfil.Nome == "Gerente" && perfil.Tipo == TipoPerfil.Gerente);
         Assert.Contains(perfis, perfil => perfil.Nome == "Operador" && perfil.Tipo == TipoPerfil.Operador);
         Assert.Contains(perfis, perfil => perfil.Nome == "Estoquista" && perfil.Tipo == TipoPerfil.Estoquista);
-        Assert.Equal(new[] { "usuarios.gerenciar", "venda.cancelar" },
+        Assert.Equal(new[] { "catalogo.gerenciar", "usuarios.gerenciar", "venda.cancelar" },
             permissoes.Select(permissao => permissao.Codigo).Order().ToArray());
         var perfilAdministrador = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Administrador);
         Assert.Equal(permissoes.Select(permissao => permissao.Id).Order(),

@@ -1,0 +1,566 @@
+@page "/catalogo"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using PDV.Web.Autenticacao
+@inject CatalogoApiClient ApiCatalogo
+@inject IJSRuntime JS
+
+<PageTitle>Produtos e categorias | PDV Web</PageTitle>
+
+<h1>Produtos e categorias</h1>
+<p class="text-muted">Cadastro compartilhado entre as filiais da empresa.</p>
+
+@if (!string.IsNullOrWhiteSpace(_erro))
+{
+    <div class="alert alert-danger" role="alert">@_erro</div>
+}
+@if (!string.IsNullOrWhiteSpace(_sucesso))
+{
+    <div class="alert alert-success" role="status">@_sucesso</div>
+}
+@if (_carregando)
+{
+    <p role="status">Carregando catálogo...</p>
+}
+else
+{
+    <div class="row g-4 mb-4">
+        <div class="col-lg-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Departamentos</h2>
+                    <EditForm Model="_departamentoForm" OnValidSubmit="SalvarDepartamentoAsync">
+                        <DataAnnotationsValidator />
+                        <label class="form-label" for="departamento-nome">Nome</label>
+                        <InputText id="departamento-nome" class="form-control mb-2" @bind-Value="_departamentoForm.Nome" />
+                        <ValidationMessage For="() => _departamentoForm.Nome" />
+                        <label class="form-label" for="departamento-segmento">Segmento/nicho (opcional)</label>
+                        <InputText id="departamento-segmento" class="form-control mb-2" @bind-Value="_departamentoForm.Segmento" />
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-primary" type="submit">@(_departamentoId is null ? "Adicionar" : "Salvar")</button>
+                            @if (_departamentoId is not null)
+                            {
+                                <button class="btn btn-outline-secondary" type="button" @onclick="CancelarEdicaoDepartamento">Cancelar</button>
+                            }
+                        </div>
+                    </EditForm>
+                    <ul class="list-group list-group-flush mt-3">
+                        @foreach (var departamento in _departamentos)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @departamento.Nome
+                                <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => EditarDepartamento(departamento)">Editar</button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Categorias</h2>
+                    <EditForm Model="_categoriaForm" OnValidSubmit="SalvarCategoriaAsync">
+                        <DataAnnotationsValidator />
+                        <label class="form-label" for="categoria-nome">Nome</label>
+                        <InputText id="categoria-nome" class="form-control mb-2" @bind-Value="_categoriaForm.Nome" />
+                        <ValidationMessage For="() => _categoriaForm.Nome" />
+                        <label class="form-label" for="categoria-departamento">Departamento</label>
+                        <InputSelect id="categoria-departamento" class="form-select" @bind-Value="_categoriaForm.DepartamentoId">
+                            <option value="">Selecione</option>
+                            @foreach (var departamento in _departamentos)
+                            {
+                                <option value="@departamento.Id">@departamento.Nome</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _categoriaForm.DepartamentoId" />
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-primary" type="submit" disabled="@(_departamentos.Count == 0)">
+                                @(_categoriaId is null ? "Adicionar" : "Salvar")
+                            </button>
+                            @if (_categoriaId is not null)
+                            {
+                                <button class="btn btn-outline-secondary" type="button" @onclick="CancelarEdicaoCategoria">Cancelar</button>
+                            }
+                        </div>
+                    </EditForm>
+                    <ul class="list-group list-group-flush mt-3">
+                        @foreach (var categoria in _categorias)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                                <span>@categoria.Nome <small class="text-muted">(@categoria.DepartamentoNome)</small></span>
+                                <span class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => EditarCategoria(categoria)">Editar</button>
+                                    <button class="btn btn-sm btn-outline-danger" type="button" @onclick="() => ExcluirCategoriaAsync(categoria)">Excluir</button>
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Subcategorias</h2>
+                    <EditForm Model="_subcategoriaForm" OnValidSubmit="SalvarSubcategoriaAsync">
+                        <DataAnnotationsValidator />
+                        <label class="form-label" for="subcategoria-nome">Nome</label>
+                        <InputText id="subcategoria-nome" class="form-control mb-2" @bind-Value="_subcategoriaForm.Nome" />
+                        <ValidationMessage For="() => _subcategoriaForm.Nome" />
+                        <label class="form-label" for="subcategoria-categoria">Categoria</label>
+                        <InputSelect id="subcategoria-categoria" class="form-select" @bind-Value="_subcategoriaForm.CategoriaId">
+                            <option value="">Selecione</option>
+                            @foreach (var categoria in _categorias)
+                            {
+                                <option value="@categoria.Id">@categoria.DepartamentoNome / @categoria.Nome</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _subcategoriaForm.CategoriaId" />
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-primary" type="submit" disabled="@(_categorias.Count == 0)">
+                                @(_subcategoriaId is null ? "Adicionar" : "Salvar")
+                            </button>
+                            @if (_subcategoriaId is not null)
+                            {
+                                <button class="btn btn-outline-secondary" type="button" @onclick="CancelarEdicaoSubcategoria">Cancelar</button>
+                            }
+                        </div>
+                    </EditForm>
+                    <ul class="list-group list-group-flush mt-3">
+                        @foreach (var subcategoria in _subcategorias)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center gap-2">
+                                <span>@subcategoria.Nome <small class="text-muted">(@subcategoria.CategoriaNome)</small></span>
+                                <span class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => EditarSubcategoria(subcategoria)">Editar</button>
+                                    <button class="btn btn-sm btn-outline-danger" type="button" @onclick="() => ExcluirSubcategoriaAsync(subcategoria)">Excluir</button>
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </section>
+        </div>
+
+        <div class="col-lg-3">
+            <section class="card h-100">
+                <div class="card-body">
+                    <h2 class="h5">Produto</h2>
+                    <EditForm Model="_produtoForm" OnValidSubmit="SalvarProdutoAsync">
+                        <DataAnnotationsValidator />
+                        <label class="form-label" for="produto-descricao">Descrição</label>
+                        <InputText id="produto-descricao" class="form-control mb-2" @bind-Value="_produtoForm.Descricao" />
+                        <ValidationMessage For="() => _produtoForm.Descricao" />
+                        <label class="form-label" for="produto-subcategoria">Subcategoria</label>
+                        <InputSelect id="produto-subcategoria" class="form-select mb-2" @bind-Value="_produtoForm.SubcategoriaId">
+                            <option value="">Selecione</option>
+                            @foreach (var subcategoria in _subcategorias)
+                            {
+                                <option value="@subcategoria.Id">@subcategoria.DepartamentoNome / @subcategoria.CategoriaNome / @subcategoria.Nome</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="() => _produtoForm.SubcategoriaId" />
+                        <label class="form-label" for="produto-unidade">Unidade de medida</label>
+                        <InputText id="produto-unidade" class="form-control mb-2" @bind-Value="_produtoForm.UnidadeMedida" />
+                        <ValidationMessage For="() => _produtoForm.UnidadeMedida" />
+                        <label class="form-label" for="produto-codigos">Códigos de barras (um por linha)</label>
+                        <InputTextArea id="produto-codigos" class="form-control mb-2" rows="3" @bind-Value="_produtoForm.CodigosBarras" />
+                        <label class="form-label" for="produto-status">Situação</label>
+                        <InputSelect id="produto-status" class="form-select" @bind-Value="_produtoForm.Status">
+                            <option value="1">Ativo</option>
+                            <option value="2">Inativo</option>
+                            <option value="3">Bloqueado</option>
+                        </InputSelect>
+                        <div class="form-check mt-2">
+                            <InputCheckbox id="produto-uso-interno" class="form-check-input" @bind-Value="_produtoForm.UsoInterno" />
+                            <label class="form-check-label" for="produto-uso-interno">Uso interno (não destinado à revenda)</label>
+                        </div>
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary" type="submit" disabled="@(_categorias.Count == 0)">
+                                @(_produtoId is null ? "Adicionar produto" : "Salvar produto")
+                            </button>
+                            @if (_produtoId is not null)
+                            {
+                                <button class="btn btn-outline-secondary" type="button" @onclick="CancelarEdicaoProduto">Cancelar</button>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <section class="card">
+        <div class="card-body">
+            <h2 class="h5">Produtos cadastrados</h2>
+            <div class="input-group mb-3">
+                <InputText class="form-control" aria-label="Pesquisar por descrição ou código de barras" @bind-Value="_busca" />
+                <button class="btn btn-outline-primary" type="button" @onclick="BuscarProdutosAsync">Pesquisar</button>
+            </div>
+            @if (_produtos.Count == 0)
+            {
+                <p class="text-muted mb-0">Nenhum produto encontrado.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Unidade</th>
+                                <th>Uso</th>
+                                <th>Códigos de barras</th>
+                                <th>Situação</th>
+                                <th><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var produto in _produtos)
+                            {
+                                <tr>
+                                    <td>@produto.Descricao</td>
+                                    <td>@produto.DepartamentoNome / @produto.CategoriaNome</td>
+                                    <td>@produto.UnidadeMedida</td>
+                                    <td>@(produto.UsoInterno ? "Interno" : "Revenda")</td>
+                                    <td>@string.Join(", ", produto.CodigosBarras)</td>
+                                    <td>@NomeStatus(produto.Status)</td>
+                                    <td><button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => EditarProduto(produto)">Editar</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private IReadOnlyList<CatalogoApiClient.DepartamentoDto> _departamentos = [];
+    private IReadOnlyList<CatalogoApiClient.CategoriaDto> _categorias = [];
+    private IReadOnlyList<CatalogoApiClient.SubcategoriaDto> _subcategorias = [];
+    private IReadOnlyList<CatalogoApiClient.ProdutoDto> _produtos = [];
+    private readonly FormularioDepartamento _departamentoForm = new();
+    private readonly FormularioCategoria _categoriaForm = new();
+    private readonly FormularioSubcategoria _subcategoriaForm = new();
+    private readonly FormularioProduto _produtoForm = new();
+    private Guid? _departamentoId;
+    private Guid? _categoriaId;
+    private Guid? _subcategoriaId;
+    private Guid? _produtoId;
+    private string _busca = "";
+    private string? _erro;
+    private string? _sucesso;
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await AtualizarListasAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            _erro = $"Não foi possível carregar o catálogo. {ex.Message}";
+        }
+        catch (InvalidOperationException ex)
+        {
+            _erro = ex.Message;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _erro = ex.Message;
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task SalvarDepartamentoAsync()
+    {
+        try
+        {
+            if (_departamentoId is Guid id)
+                await ApiCatalogo.AtualizarDepartamentoAsync(id, _departamentoForm.Nome, _departamentoForm.Segmento);
+            else
+                await ApiCatalogo.CriarDepartamentoAsync(_departamentoForm.Nome, _departamentoForm.Segmento);
+            CancelarEdicaoDepartamento();
+            await AtualizarListasAsync();
+            Concluir("Departamento salvo.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task SalvarCategoriaAsync()
+    {
+        if (_categoriaForm.DepartamentoId is not Guid departamentoId)
+            return;
+
+        try
+        {
+            if (_categoriaId is Guid id)
+                await ApiCatalogo.AtualizarCategoriaAsync(id, _categoriaForm.Nome, departamentoId);
+            else
+                await ApiCatalogo.CriarCategoriaAsync(_categoriaForm.Nome, departamentoId);
+            CancelarEdicaoCategoria();
+            await AtualizarListasAsync();
+            Concluir("Categoria salva.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task SalvarProdutoAsync()
+    {
+        if (_produtoForm.SubcategoriaId is not Guid subcategoriaId)
+            return;
+
+        var request = new CatalogoApiClient.ProdutoRequest(
+            _produtoForm.Descricao.Trim(),
+            subcategoriaId,
+            _produtoForm.UnidadeMedida.Trim(),
+            _produtoForm.CodigosBarras.Split(
+                ['\r', '\n', ',', ';'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+            _produtoForm.Status,
+            _produtoForm.UsoInterno);
+
+        try
+        {
+            if (_produtoId is Guid id)
+                await ApiCatalogo.AtualizarProdutoAsync(id, request);
+            else
+                await ApiCatalogo.CriarProdutoAsync(request);
+            CancelarEdicaoProduto();
+            await AtualizarListasAsync();
+            Concluir("Produto salvo.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task SalvarSubcategoriaAsync()
+    {
+        if (_subcategoriaForm.CategoriaId is not Guid categoriaId)
+            return;
+
+        try
+        {
+            if (_subcategoriaId is Guid id)
+                await ApiCatalogo.AtualizarSubcategoriaAsync(id, _subcategoriaForm.Nome, categoriaId);
+            else
+                await ApiCatalogo.CriarSubcategoriaAsync(_subcategoriaForm.Nome, categoriaId);
+            CancelarEdicaoSubcategoria();
+            await AtualizarListasAsync();
+            Concluir("Subcategoria salva.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task ExcluirCategoriaAsync(CatalogoApiClient.CategoriaDto categoria)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+                $"Excluir a categoria '{categoria.Nome}'? Subcategorias precisam ser movidas antes."))
+            return;
+
+        try
+        {
+            await ApiCatalogo.RemoverCategoriaAsync(categoria.Id);
+            await AtualizarListasAsync();
+            Concluir("Categoria excluída.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task ExcluirSubcategoriaAsync(CatalogoApiClient.SubcategoriaDto subcategoria)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm",
+                $"Excluir a subcategoria '{subcategoria.Nome}'? Produtos precisam ser movidos antes."))
+            return;
+
+        try
+        {
+            await ApiCatalogo.RemoverSubcategoriaAsync(subcategoria.Id);
+            await AtualizarListasAsync();
+            Concluir("Subcategoria excluída.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task BuscarProdutosAsync()
+    {
+        try
+        {
+            _produtos = await ApiCatalogo.ListarProdutosAsync(_busca);
+            _erro = null;
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task AtualizarListasAsync()
+    {
+        _departamentos = await ApiCatalogo.ListarDepartamentosAsync();
+        _categorias = await ApiCatalogo.ListarCategoriasAsync();
+        _subcategorias = await ApiCatalogo.ListarSubcategoriasAsync();
+        _produtos = await ApiCatalogo.ListarProdutosAsync(_busca);
+    }
+
+    private void EditarDepartamento(CatalogoApiClient.DepartamentoDto departamento)
+    {
+        _departamentoId = departamento.Id;
+        _departamentoForm.Nome = departamento.Nome;
+        LimparMensagens();
+    }
+
+    private void EditarCategoria(CatalogoApiClient.CategoriaDto categoria)
+    {
+        _categoriaId = categoria.Id;
+        _categoriaForm.Nome = categoria.Nome;
+        _categoriaForm.DepartamentoId = categoria.DepartamentoId;
+        LimparMensagens();
+    }
+
+    private void EditarSubcategoria(CatalogoApiClient.SubcategoriaDto subcategoria)
+    {
+        _subcategoriaId = subcategoria.Id;
+        _subcategoriaForm.Nome = subcategoria.Nome;
+        _subcategoriaForm.CategoriaId = subcategoria.CategoriaId;
+        LimparMensagens();
+    }
+
+    private void EditarProduto(CatalogoApiClient.ProdutoDto produto)
+    {
+        _produtoId = produto.Id;
+        _produtoForm.Descricao = produto.Descricao;
+        _produtoForm.SubcategoriaId = produto.SubcategoriaId;
+        _produtoForm.UnidadeMedida = produto.UnidadeMedida;
+        _produtoForm.CodigosBarras = string.Join(Environment.NewLine, produto.CodigosBarras);
+        _produtoForm.Status = produto.Status;
+        _produtoForm.UsoInterno = produto.UsoInterno;
+        LimparMensagens();
+    }
+
+    private void CancelarEdicaoDepartamento()
+    {
+        _departamentoId = null;
+        _departamentoForm.Nome = "";
+        _departamentoForm.Segmento = "";
+    }
+
+    private void CancelarEdicaoCategoria()
+    {
+        _categoriaId = null;
+        _categoriaForm.Nome = "";
+        _categoriaForm.DepartamentoId = null;
+    }
+
+    private void CancelarEdicaoSubcategoria()
+    {
+        _subcategoriaId = null;
+        _subcategoriaForm.Nome = "";
+        _subcategoriaForm.CategoriaId = null;
+    }
+
+    private void CancelarEdicaoProduto()
+    {
+        _produtoId = null;
+        _produtoForm.Descricao = "";
+        _produtoForm.SubcategoriaId = null;
+        _produtoForm.UnidadeMedida = "";
+        _produtoForm.CodigosBarras = "";
+        _produtoForm.Status = 1;
+        _produtoForm.UsoInterno = false;
+    }
+
+    private void Concluir(string mensagem)
+    {
+        _erro = null;
+        _sucesso = mensagem;
+    }
+
+    private void Falha(Exception ex)
+    {
+        _sucesso = null;
+        _erro = ex.Message;
+    }
+
+    private void LimparMensagens()
+    {
+        _erro = null;
+        _sucesso = null;
+    }
+
+    private static string NomeStatus(int status) => status switch
+    {
+        1 => "Ativo",
+        2 => "Inativo",
+        3 => "Bloqueado",
+        _ => "Indefinido"
+    };
+
+    private sealed class FormularioDepartamento
+    {
+        [Required(ErrorMessage = "Informe o nome do departamento.")]
+        [StringLength(100)]
+        public string Nome { get; set; } = "";
+
+        [StringLength(100)]
+        public string? Segmento { get; set; }
+    }
+
+    private sealed class FormularioCategoria
+    {
+        [Required(ErrorMessage = "Informe o nome da categoria.")]
+        [StringLength(100)]
+        public string Nome { get; set; } = "";
+
+        [Required(ErrorMessage = "Selecione um departamento.")]
+        public Guid? DepartamentoId { get; set; }
+    }
+
+    private sealed class FormularioProduto
+    {
+        [Required(ErrorMessage = "Informe a descrição do produto.")]
+        [StringLength(200)]
+        public string Descricao { get; set; } = "";
+
+        [Required(ErrorMessage = "Selecione uma categoria.")]
+        public Guid? SubcategoriaId { get; set; }
+
+        [Required(ErrorMessage = "Informe a unidade de medida.")]
+        [StringLength(30)]
+        public string UnidadeMedida { get; set; } = "";
+
+        public string CodigosBarras { get; set; } = "";
+        public int Status { get; set; } = 1;
+        public bool UsoInterno { get; set; }
+    }
+
+    private sealed class FormularioSubcategoria
+    {
+        [Required(ErrorMessage = "Informe o nome da subcategoria.")]
+        [StringLength(100)]
+        public string Nome { get; set; } = "";
+
+        [Required(ErrorMessage = "Selecione uma categoria.")]
+        public Guid? CategoriaId { get; set; }
+    }
+}

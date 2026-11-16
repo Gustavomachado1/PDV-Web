@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using PDV.API.Hubs;
+using PDV.API.Endpoints;
 using PDV.API.Servicos;
 using PDV.Application;
 using PDV.Domain;
@@ -14,6 +16,7 @@ builder.Services.AddScoped<EmpresaContextoLogin>();
 builder.Services.AddScoped<IUsuarioAtual, UsuarioAtualHttp>();
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 builder.Services.AddScoped<AutenticacaoService>();
+builder.Services.AddScoped<AutorizacaoPermissaoService>();
 builder.Services.AddScoped<ProvisionamentoInicialService>();
 builder.Services.AddScoped<ProvisionamentoAssinaturaLocalService>();
 builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
@@ -34,8 +37,9 @@ var app = builder.Build();
 
 var solicitouBootstrap = args.Contains("--bootstrap", StringComparer.Ordinal);
 var solicitouAssinaturaLocal = args.Contains("--provisionar-assinatura-local", StringComparer.Ordinal);
-if (solicitouBootstrap && solicitouAssinaturaLocal)
-    throw new InvalidOperationException("Execute apenas uma operação de provisionamento por vez.");
+var solicitouSeedCatalogo = args.Contains("--seed-catalogo-padrao", StringComparer.Ordinal);
+if (new[] { solicitouBootstrap, solicitouAssinaturaLocal, solicitouSeedCatalogo }.Count(x => x) > 1)
+    throw new InvalidOperationException("Execute apenas uma operação administrativa por vez.");
 
 if (solicitouAssinaturaLocal)
 {
@@ -49,6 +53,34 @@ if (solicitouAssinaturaLocal)
             args.Contains("--confirmar-banco-local", StringComparer.Ordinal),
             app.Lifetime.ApplicationStopping);
     Console.WriteLine("Assinatura local Essencial provisionada sem cobrança.");
+    return;
+}
+
+if (solicitouSeedCatalogo)
+{
+    if (!args.Contains("--confirmar-catalogo-padrao", StringComparer.Ordinal))
+        throw new InvalidOperationException(
+            "Confirme a população do catálogo com --confirmar-catalogo-padrao.");
+
+    var valorEmpresaId = Environment.GetEnvironmentVariable("PDV_CATALOGO_EMPRESA_ID");
+    if (!Guid.TryParse(valorEmpresaId, out var empresaId) || empresaId == Guid.Empty)
+        throw new InvalidOperationException(
+            "Defina PDV_CATALOGO_EMPRESA_ID com o identificador da empresa.");
+    var segmento = Environment.GetEnvironmentVariable("PDV_CATALOGO_SEGMENTO");
+
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<PdvDbContext>();
+    var empresaExiste = await db.Empresas.IgnoreQueryFilters()
+        .AnyAsync(x => x.Id == empresaId, app.Lifetime.ApplicationStopping);
+    if (!empresaExiste)
+        throw new InvalidOperationException("A empresa informada não foi encontrada no banco configurado.");
+
+    scope.ServiceProvider.GetRequiredService<EmpresaContextoLogin>().Definir(empresaId);
+    var resultado = await scope.ServiceProvider.GetRequiredService<CatalogoPadraoSeeder>()
+        .PopularAsync(empresaId, segmento, app.Lifetime.ApplicationStopping);
+    Console.WriteLine(
+        $"Catálogo padrão processado: {resultado.Departamentos} departamentos, " +
+        $"{resultado.Categorias} categorias e {resultado.Subcategorias} subcategorias adicionados.");
     return;
 }
 
@@ -113,5 +145,6 @@ app.MapGet("/auth/me", (ClaimsPrincipal usuario) => Results.Ok(new
 })).RequireAuthorization();
 
 app.MapHub<NotificacoesHub>("/hubs/notificacoes").RequireAuthorization();
+app.MapCatalogoEndpoints();
 
 app.Run();

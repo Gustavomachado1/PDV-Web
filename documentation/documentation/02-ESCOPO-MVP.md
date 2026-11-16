@@ -46,8 +46,9 @@ As funcionalidades deverão respeitar as regras de acesso, configurações e abr
 ### 3.2. Cadastro de produtos
 
 - Cadastro centralizado de produtos, mantendo informações gerais padronizadas entre as filiais.
-- Cadastro e edição da descrição, código de barras e demais informações gerais dos produtos.
-- Cadastro e gerenciamento de categorias e departamentos.
+- Cadastro e edição das informações gerais dos produtos; descrição, unidade de medida e subcategoria são obrigatórias, e código de barras é opcional.
+- Cadastro e gerenciamento de departamentos, categorias e subcategorias na hierarquia Departamento > Categoria > Subcategoria.
+- Identificação opcional de segmento/nicho no departamento para filtrar categorias no onboarding e de produtos para uso interno.
 - Controle de produtos ativos e inativos.
 - Cadastro de custos e preços.
 - Configuração de markup.

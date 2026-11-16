@@ -13,6 +13,11 @@ public class PdvDbContext(DbContextOptions<PdvDbContext> options, IUsuarioAtual 
 
     public DbSet<Empresa> Empresas => Set<Empresa>();
     public DbSet<Filial> Filiais => Set<Filial>();
+    public DbSet<Departamento> Departamentos => Set<Departamento>();
+    public DbSet<Categoria> Categorias => Set<Categoria>();
+    public DbSet<Subcategoria> Subcategorias => Set<Subcategoria>();
+    public DbSet<Produto> Produtos => Set<Produto>();
+    public DbSet<CodigoBarrasProduto> CodigosBarrasProdutos => Set<CodigoBarrasProduto>();
     public DbSet<Perfil> Perfis => Set<Perfil>();
     public DbSet<Permissao> Permissoes => Set<Permissao>();
     public DbSet<PerfilPermissao> PerfisPermissoes => Set<PerfilPermissao>();

@@ -206,6 +206,7 @@ public sealed class ProvisionamentoInicialService(
         };
         var permissoes = new[]
         {
+            new Permissao { Codigo = "catalogo.gerenciar", Descricao = "Gerenciar catálogo de produtos" },
             new Permissao { Codigo = "usuarios.gerenciar", Descricao = "Gerenciar usuários" },
             new Permissao { Codigo = "venda.cancelar", Descricao = "Cancelar vendas" }
         };
