@@ -104,6 +104,8 @@ public sealed class AuditoriaInterceptor(IUsuarioAtual usuarioAtual) : SaveChang
                 EmpresaId = empresaId.Value,
                 FilialId = entry.Entity is IFilialScoped entidadeFilial
                     ? entidadeFilial.FilialId
+                    : entry.Entity is Filial filial
+                        ? filial.Id
                     : entry.Entity is AutorizacaoOperacao autorizacao
                         ? autorizacao.FilialId
                     : usuarioAtual.FilialId,

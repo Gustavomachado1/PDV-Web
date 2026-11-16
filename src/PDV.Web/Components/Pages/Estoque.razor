@@ -45,6 +45,51 @@ else
 
     @if (_filialId is Guid filialId)
     {
+        @if (_configuracaoEstoqueNegativo is not null)
+        {
+            <section class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4">Regra de estoque negativo</h2>
+                    <p class="text-muted">
+                        A regra efetiva desta filial está
+                        <strong>@(_configuracaoEstoqueNegativo.PermiteEstoqueNegativoEfetivo ? "habilitada" : "desabilitada")</strong>.
+                        Sem uma configuração própria, a filial usa o padrão da empresa.
+                    </p>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label" for="estoque-negativo-empresa">Padrão da empresa</label>
+                            <InputSelect id="estoque-negativo-empresa" class="form-select"
+                                @bind-Value="_permiteEstoqueNegativoEmpresa">
+                                <option value="false">Bloquear operações com saldo negativo</option>
+                                <option value="true">Permitir com autorização específica</option>
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-outline-primary" type="button"
+                                @onclick="SalvarConfiguracaoEstoqueNegativoEmpresaAsync">
+                                Salvar padrão da empresa
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="estoque-negativo-filial">Regra desta filial</label>
+                            <InputSelect id="estoque-negativo-filial" class="form-select"
+                                @bind-Value="_modoEstoqueNegativoFilial">
+                                <option value="0">Herdar padrão da empresa</option>
+                                <option value="1">Permitir com autorização específica</option>
+                                <option value="2">Bloquear operações com saldo negativo</option>
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-outline-primary" type="button"
+                                @onclick="SalvarConfiguracaoEstoqueNegativoFilialAsync">
+                                Salvar regra da filial
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        }
+
         <section class="card mb-4">
             <div class="card-body">
                 <h2 class="h4">Movimentação manual</h2>
@@ -313,6 +358,9 @@ else
     private readonly Dictionary<Guid, ConfiguracaoProduto> _configuracoes = [];
     private readonly Dictionary<Guid, decimal> _contagens = [];
     private readonly HashSet<Guid> _selecionadosInventario = [];
+    private EstoqueApiClient.ConfiguracaoEstoqueNegativoDto? _configuracaoEstoqueNegativo;
+    private bool _permiteEstoqueNegativoEmpresa;
+    private int _modoEstoqueNegativoFilial;
     private FormularioMovimento _movimentoForm = new();
     private Guid? _filialId;
     private int _tipoInventario = (int)TipoInventarioEstoque.Completo;
@@ -363,6 +411,16 @@ else
         try
         {
             _produtos = (await ApiEstoque.ListarProdutosAsync(filialId)).ToList();
+            _configuracaoEstoqueNegativo =
+                await ApiEstoque.ObterConfiguracaoEstoqueNegativoAsync(filialId);
+            _permiteEstoqueNegativoEmpresa =
+                _configuracaoEstoqueNegativo.PermiteEstoqueNegativoEmpresa;
+            _modoEstoqueNegativoFilial = _configuracaoEstoqueNegativo.PermiteEstoqueNegativoFilial switch
+            {
+                true => 1,
+                false => 2,
+                null => 0
+            };
             _movimentos = (await ApiEstoque.ListarMovimentosAsync(filialId)).ToList();
             _pendentes = (await ApiEstoque.ListarPendentesAsync(filialId)).ToList();
             _inventarios = (await ApiEstoque.ListarInventariosAsync(filialId)).ToList();
@@ -442,6 +500,43 @@ else
                     configuracao.EstoqueMinimo, configuracao.EstoqueIdeal, configuracao.Disponivel));
             await CarregarFilialAsync();
             Concluir($"Configuração de {produto.Descricao} salva.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task SalvarConfiguracaoEstoqueNegativoEmpresaAsync()
+    {
+        if (_filialId is not Guid filialId)
+            return;
+        try
+        {
+            await ApiEstoque.ConfigurarEstoqueNegativoEmpresaAsync(
+                filialId, _permiteEstoqueNegativoEmpresa);
+            await CarregarFilialAsync();
+            Concluir("Padrão de estoque negativo da empresa salvo.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task SalvarConfiguracaoEstoqueNegativoFilialAsync()
+    {
+        if (_filialId is not Guid filialId)
+            return;
+        var permiteNaFilial = _modoEstoqueNegativoFilial switch
+        {
+            1 => true,
+            2 => false,
+            _ => (bool?)null
+        };
+        try
+        {
+            await ApiEstoque.ConfigurarEstoqueNegativoFilialAsync(filialId, permiteNaFilial);
+            await CarregarFilialAsync();
+            Concluir("Regra de estoque negativo da filial salva.");
         }
         catch (HttpRequestException ex) { Falha(ex); }
         catch (InvalidOperationException ex) { Falha(ex); }

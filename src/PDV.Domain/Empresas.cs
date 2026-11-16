@@ -7,6 +7,7 @@ public class Empresa : EntidadeBase, IAuditavel
     public string? NomeFantasia { get; set; }
     public string Cnpj { get; set; } = "";            // somente dígitos
     public bool Ativa { get; set; } = true;
+    public bool PermiteEstoqueNegativo { get; set; }
     public ICollection<Filial> Filiais { get; set; } = [];
 }
 
@@ -16,5 +17,6 @@ public class Filial : EntidadeBase, IEmpresaScoped, IAuditavel
     public string Codigo { get; set; } = "";
     public string Nome { get; set; } = "";
     public bool Ativa { get; set; } = true;
+    public bool? PermiteEstoqueNegativo { get; set; }
     public Empresa? Empresa { get; set; }
 }

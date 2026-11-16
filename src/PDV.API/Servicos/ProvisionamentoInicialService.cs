@@ -211,6 +211,8 @@ public sealed class ProvisionamentoInicialService(
             new Permissao { Codigo = "venda.cancelar", Descricao = "Cancelar vendas" },
             new Permissao { Codigo = "estoque.consultar", Descricao = "Consultar estoque e movimentações" },
             new Permissao { Codigo = "estoque.configurar", Descricao = "Configurar estoque por filial" },
+            new Permissao { Codigo = "estoque.negativo.configurar", Descricao = "Configurar a regra de estoque negativo" },
+            new Permissao { Codigo = "estoque.negativo.permitir", Descricao = "Autorizar operações que resultem em estoque negativo" },
             new Permissao { Codigo = "estoque.movimentar.solicitar", Descricao = "Solicitar movimentação manual de estoque" },
             new Permissao { Codigo = "estoque.movimento.entrada.autorizar", Descricao = "Autorizar entradas manuais de estoque" },
             new Permissao { Codigo = "estoque.movimento.saida.autorizar", Descricao = "Autorizar saídas manuais de estoque" },

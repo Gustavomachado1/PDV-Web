@@ -48,15 +48,29 @@ public class EstoqueServiceTests
     }
 
     [Fact]
-    public async Task SaidaAutorizadaPodeGerarSaldoNegativoEAprovacaoPropriaERecusada()
+    public async Task SaidaNegativaExigePermissaoEspecificaEAutorizacaoDeOutroUsuario()
     {
         await using var contexto = await CriarContextoAsync();
         var produto = await CriarProdutoAsync(contexto.Db, "Produto B");
+        contexto.Empresa.PermiteEstoqueNegativo = true;
+        await contexto.Db.SaveChangesAsync();
+
         var movimentoId = await contexto.Estoque.SolicitarMovimentoAsync(
             contexto.Filial.Id,
             new SolicitarMovimentoEstoqueRequest(
                 produto.Id, TipoMovimentoEstoque.SaidaManual, 2, "Avaria"),
             CancellationToken.None);
+
+        var semPermissao = await Assert.ThrowsAsync<EstoqueException>(() =>
+            contexto.Estoque.DecidirMovimentoAsync(
+                contexto.Filial.Id,
+                movimentoId,
+                new DecidirMovimentoEstoqueRequest(true, "gerente", "SenhaForte!456"),
+                CancellationToken.None));
+        Assert.Equal(403, semPermissao.StatusCode);
+        Assert.Empty(await contexto.Db.SaldosEstoque.ToListAsync());
+        await ConcederPermissaoAsync(
+            contexto, contexto.Autorizador.PerfilId, "estoque.negativo.permitir");
 
         var erro = await Assert.ThrowsAsync<EstoqueException>(() =>
             contexto.Estoque.DecidirMovimentoAsync(
@@ -74,6 +88,91 @@ public class EstoqueServiceTests
             CancellationToken.None);
 
         Assert.Equal(-2, (await contexto.Db.SaldosEstoque.SingleAsync()).Quantidade);
+    }
+
+    [Fact]
+    public async Task DesabilitarEstoqueNegativoBloqueiaAutorizacaoJaPendente()
+    {
+        await using var contexto = await CriarContextoAsync();
+        var produto = await CriarProdutoAsync(contexto.Db, "Produto negativo desabilitado");
+        contexto.Empresa.PermiteEstoqueNegativo = true;
+        await ConcederPermissaoAsync(
+            contexto, contexto.Autorizador.PerfilId, "estoque.negativo.permitir");
+        await contexto.Db.SaveChangesAsync();
+
+        var movimentoId = await contexto.Estoque.SolicitarMovimentoAsync(
+            contexto.Filial.Id,
+            new SolicitarMovimentoEstoqueRequest(
+                produto.Id, TipoMovimentoEstoque.SaidaManual, 2, "Avaria"),
+            CancellationToken.None);
+        contexto.Empresa.PermiteEstoqueNegativo = false;
+        await contexto.Db.SaveChangesAsync();
+
+        var erro = await Assert.ThrowsAsync<EstoqueException>(() =>
+            contexto.Estoque.DecidirMovimentoAsync(
+                contexto.Filial.Id,
+                movimentoId,
+                new DecidirMovimentoEstoqueRequest(true, "gerente", "SenhaForte!456"),
+                CancellationToken.None));
+
+        Assert.Equal(409, erro.StatusCode);
+        Assert.Empty(await contexto.Db.SaldosEstoque.ToListAsync());
+        Assert.Equal(SituacaoMovimentoEstoque.AguardandoAutorizacao,
+            (await contexto.Db.MovimentosEstoque.SingleAsync()).Situacao);
+    }
+
+    [Fact]
+    public async Task ConfiguracaoNegativaUsaPadraoDaEmpresaESobrescritaDaFilialComAuditoria()
+    {
+        await using var contexto = await CriarContextoAsync();
+        var semPermissao = await Assert.ThrowsAsync<EstoqueException>(() =>
+            contexto.Estoque.AtualizarConfiguracaoEstoqueNegativoEmpresaAsync(
+                contexto.Filial.Id,
+                new ConfigurarEstoqueNegativoEmpresaRequest(true),
+                CancellationToken.None));
+        Assert.Equal(403, semPermissao.StatusCode);
+
+        await ConcederPermissaoAsync(
+            contexto, contexto.Usuario.PerfilId, "estoque.negativo.configurar");
+        await contexto.Estoque.AtualizarConfiguracaoEstoqueNegativoEmpresaAsync(
+            contexto.Filial.Id,
+            new ConfigurarEstoqueNegativoEmpresaRequest(true),
+            CancellationToken.None);
+
+        var herdada = await contexto.Estoque.ObterConfiguracaoEstoqueNegativoAsync(
+            contexto.Filial.Id, CancellationToken.None);
+        Assert.True(herdada.PermiteEstoqueNegativoEmpresa);
+        Assert.Null(herdada.PermiteEstoqueNegativoFilial);
+        Assert.True(herdada.PermiteEstoqueNegativoEfetivo);
+
+        await contexto.Estoque.AtualizarConfiguracaoEstoqueNegativoFilialAsync(
+            contexto.Filial.Id,
+            new ConfigurarEstoqueNegativoFilialRequest(false),
+            CancellationToken.None);
+        var sobrescrita = await contexto.Estoque.ObterConfiguracaoEstoqueNegativoAsync(
+            contexto.Filial.Id, CancellationToken.None);
+        Assert.False(sobrescrita.PermiteEstoqueNegativoEfetivo);
+        var produto = await CriarProdutoAsync(contexto.Db, "Produto bloqueado na filial");
+        var operacaoBloqueada = await Assert.ThrowsAsync<EstoqueException>(() =>
+            contexto.Estoque.SolicitarMovimentoAsync(
+                contexto.Filial.Id,
+                new SolicitarMovimentoEstoqueRequest(
+                    produto.Id, TipoMovimentoEstoque.SaidaManual, 1, "Avaria"),
+                CancellationToken.None));
+        Assert.Equal(409, operacaoBloqueada.StatusCode);
+
+        await contexto.Estoque.AtualizarConfiguracaoEstoqueNegativoFilialAsync(
+            contexto.Filial.Id,
+            new ConfigurarEstoqueNegativoFilialRequest(null),
+            CancellationToken.None);
+        var auditoriaEmpresa = await contexto.Db.Auditoria.SingleAsync(x =>
+            x.Entidade == nameof(Empresa) && x.Operacao == "Empresa.Alterar");
+        Assert.Contains("\"PermiteEstoqueNegativo\":false", auditoriaEmpresa.ValoresAnteriores);
+        Assert.Contains("\"PermiteEstoqueNegativo\":true", auditoriaEmpresa.ValoresPosteriores);
+        Assert.Contains(await contexto.Db.Auditoria.ToListAsync(),
+            x => x.Entidade == nameof(Filial) &&
+                x.Operacao == "Filial.Alterar" &&
+                x.FilialId == contexto.Filial.Id);
     }
 
     [Fact]
@@ -310,6 +409,16 @@ public class EstoqueServiceTests
             Codigo = "estoque.movimento.saida.autorizar",
             Descricao = "Autorizar saída"
         };
+        var permissaoNegativo = new Permissao
+        {
+            Codigo = "estoque.negativo.permitir",
+            Descricao = "Permitir estoque negativo"
+        };
+        var permissaoConfigurarNegativo = new Permissao
+        {
+            Codigo = "estoque.negativo.configurar",
+            Descricao = "Configurar estoque negativo"
+        };
         var usuarioAtual = new UsuarioAtualFalso(empresa.Id, usuario.Id);
         var opcoes = new DbContextOptionsBuilder<PdvDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString(), new InMemoryDatabaseRoot())
@@ -321,7 +430,8 @@ public class EstoqueServiceTests
         db.Perfis.AddRange(perfilOperador, perfilGerente);
         db.Usuarios.AddRange(usuario, autorizador);
         db.Permissoes.AddRange(
-            permissaoConsultar, permissaoSolicitar, permissaoInventario, permissaoEntrada, permissaoSaida);
+            permissaoConsultar, permissaoSolicitar, permissaoInventario, permissaoEntrada, permissaoSaida,
+            permissaoNegativo, permissaoConfigurarNegativo);
         db.UsuariosFiliais.AddRange(
             new UsuarioFilial { EmpresaId = empresa.Id, UsuarioId = usuario.Id, FilialId = filial.Id },
             new UsuarioFilial { EmpresaId = empresa.Id, UsuarioId = autorizador.Id, FilialId = filial.Id });
@@ -355,6 +465,19 @@ public class EstoqueServiceTests
         };
         usuario.SenhaHash = hasher.HashPassword(usuario, senha);
         return usuario;
+    }
+
+    private static async Task ConcederPermissaoAsync(
+        ContextoTeste contexto, Guid perfilId, string codigo)
+    {
+        var permissao = await contexto.Db.Permissoes.SingleAsync(x => x.Codigo == codigo);
+        contexto.Db.PerfisPermissoes.Add(new PerfilPermissao
+        {
+            EmpresaId = contexto.Empresa.Id,
+            PerfilId = perfilId,
+            PermissaoId = permissao.Id
+        });
+        await contexto.Db.SaveChangesAsync();
     }
 
     private static async Task<Produto> CriarProdutoAsync(PdvDbContext db, string descricao)

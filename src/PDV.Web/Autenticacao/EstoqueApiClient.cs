@@ -16,6 +16,11 @@ public sealed class EstoqueApiClient(
     public Task<IReadOnlyList<ProdutoDto>> ListarProdutosAsync(Guid filialId, CancellationToken ct = default)
         => GetAsync<IReadOnlyList<ProdutoDto>>($"api/estoque/{filialId}/produtos", ct);
 
+    public Task<ConfiguracaoEstoqueNegativoDto> ObterConfiguracaoEstoqueNegativoAsync(
+        Guid filialId, CancellationToken ct = default)
+        => GetAsync<ConfiguracaoEstoqueNegativoDto>(
+            $"api/estoque/{filialId}/configuracao-negativo", ct);
+
     public Task<IReadOnlyList<MovimentoDto>> ListarMovimentosAsync(Guid filialId, CancellationToken ct = default)
         => GetAsync<IReadOnlyList<MovimentoDto>>($"api/estoque/{filialId}/movimentos", ct);
 
@@ -40,6 +45,18 @@ public sealed class EstoqueApiClient(
         Guid filialId, Guid produtoId, ConfiguracaoRequest request, CancellationToken ct = default)
         => SendWithoutResponseAsync(
             HttpMethod.Put, $"api/estoque/{filialId}/produtos/{produtoId}/configuracao", request, ct);
+
+    public Task ConfigurarEstoqueNegativoEmpresaAsync(
+        Guid filialId, bool permiteEstoqueNegativo, CancellationToken ct = default)
+        => SendWithoutResponseAsync(
+            HttpMethod.Put, $"api/estoque/{filialId}/configuracao-negativo/empresa",
+            new ConfigurarEstoqueNegativoEmpresaRequest(permiteEstoqueNegativo), ct);
+
+    public Task ConfigurarEstoqueNegativoFilialAsync(
+        Guid filialId, bool? permiteEstoqueNegativo, CancellationToken ct = default)
+        => SendWithoutResponseAsync(
+            HttpMethod.Put, $"api/estoque/{filialId}/configuracao-negativo/filial",
+            new ConfigurarEstoqueNegativoFilialRequest(permiteEstoqueNegativo), ct);
 
     public Task<InventarioConcluidoDto> ConcluirInventarioAsync(
         Guid filialId, ConcluirInventarioRequest request, CancellationToken ct = default)
@@ -108,6 +125,12 @@ public sealed class EstoqueApiClient(
     public sealed record ProdutoDto(
         Guid ProdutoId, string Descricao, string UnidadeMedida, StatusProduto Status,
         decimal Quantidade, decimal? EstoqueMinimo, decimal? EstoqueIdeal, bool Disponivel, bool EstoqueBaixo);
+    public sealed record ConfiguracaoEstoqueNegativoDto(
+        bool PermiteEstoqueNegativoEmpresa,
+        bool? PermiteEstoqueNegativoFilial,
+        bool PermiteEstoqueNegativoEfetivo);
+    public sealed record ConfigurarEstoqueNegativoEmpresaRequest(bool PermiteEstoqueNegativo);
+    public sealed record ConfigurarEstoqueNegativoFilialRequest(bool? PermiteEstoqueNegativo);
     public sealed record MovimentoDto(
         Guid Id, Guid ProdutoId, string Produto, TipoMovimentoEstoque Tipo, decimal Quantidade,
         decimal SaldoAnterior, decimal SaldoResultante, Guid SolicitanteId, string SolicitanteNome,

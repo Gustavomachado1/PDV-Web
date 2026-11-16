@@ -42,6 +42,8 @@ public class ProvisionamentoInicialServiceTests
                 "estoque.movimentar.solicitar",
                 "estoque.movimento.entrada.autorizar",
                 "estoque.movimento.saida.autorizar",
+                "estoque.negativo.configurar",
+                "estoque.negativo.permitir",
                 "usuarios.gerenciar",
                 "venda.cancelar"
             },

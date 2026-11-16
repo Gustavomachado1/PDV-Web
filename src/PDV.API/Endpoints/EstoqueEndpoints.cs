@@ -16,6 +16,29 @@ public static class EstoqueEndpoints
             Guid filialId, EstoqueService estoque, CancellationToken ct) =>
             ExecutarAsync(async () => Results.Ok(await estoque.ListarProdutosAsync(filialId, ct))));
 
+        grupo.MapGet("/{filialId:guid}/configuracao-negativo", (
+            Guid filialId, EstoqueService estoque, CancellationToken ct) =>
+            ExecutarAsync(async () =>
+                Results.Ok(await estoque.ObterConfiguracaoEstoqueNegativoAsync(filialId, ct))));
+
+        grupo.MapPut("/{filialId:guid}/configuracao-negativo/empresa", (
+            Guid filialId, ConfigurarEstoqueNegativoEmpresaRequest? request,
+            EstoqueService estoque, CancellationToken ct) =>
+            ExecutarAsync(async () =>
+            {
+                await estoque.AtualizarConfiguracaoEstoqueNegativoEmpresaAsync(filialId, request, ct);
+                return Results.NoContent();
+            }));
+
+        grupo.MapPut("/{filialId:guid}/configuracao-negativo/filial", (
+            Guid filialId, ConfigurarEstoqueNegativoFilialRequest? request,
+            EstoqueService estoque, CancellationToken ct) =>
+            ExecutarAsync(async () =>
+            {
+                await estoque.AtualizarConfiguracaoEstoqueNegativoFilialAsync(filialId, request, ct);
+                return Results.NoContent();
+            }));
+
         grupo.MapPut("/{filialId:guid}/produtos/{produtoId:guid}/configuracao", (
             Guid filialId, Guid produtoId, ConfigurarEstoqueRequest? request,
             EstoqueService estoque, CancellationToken ct) =>
