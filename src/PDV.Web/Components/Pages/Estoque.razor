@@ -1,0 +1,513 @@
+@page "/estoque"
+@attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
+@using PDV.Domain
+@using PDV.Web.Autenticacao
+@inject EstoqueApiClient ApiEstoque
+
+<PageTitle>Estoque e inventário | PDV Web</PageTitle>
+
+<h1>Estoque e inventário</h1>
+<p class="text-muted">Saldos, movimentações e inventários separados por filial.</p>
+
+@if (!string.IsNullOrWhiteSpace(_erro))
+{
+    <div class="alert alert-danger" role="alert">@_erro</div>
+}
+@if (!string.IsNullOrWhiteSpace(_sucesso))
+{
+    <div class="alert alert-success" role="status">@_sucesso</div>
+}
+@if (_carregando)
+{
+    <p role="status">Carregando estoque...</p>
+}
+else if (_filiais.Count == 0)
+{
+    <div class="alert alert-info">Seu usuário não tem acesso a filiais com permissão de consulta de estoque.</div>
+}
+else
+{
+    <div class="mb-4" style="max-width: 28rem">
+        <label class="form-label" for="estoque-filial">Filial</label>
+        <InputSelect id="estoque-filial" class="form-select" @bind-Value="_filialId" @bind-Value:after="SelecionarFilialAsync">
+            @foreach (var filial in _filiais)
+            {
+                <option value="@filial.Id">@filial.Codigo — @filial.Nome</option>
+            }
+        </InputSelect>
+    </div>
+
+    @if (_filialId is Guid filialId)
+    {
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4">Movimentação manual</h2>
+                <p class="text-muted">Entradas e saídas ficam pendentes até outro usuário autorizador aprovar.</p>
+                <EditForm Model="_movimentoForm" OnValidSubmit="SolicitarMovimentoAsync">
+                    <DataAnnotationsValidator />
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label" for="movimento-produto">Produto</label>
+                            <InputSelect id="movimento-produto" class="form-select" @bind-Value="_movimentoForm.ProdutoId">
+                                <option value="">Selecione</option>
+                                @foreach (var produto in _produtos)
+                                {
+                                    <option value="@produto.ProdutoId">@produto.Descricao (@produto.UnidadeMedida)</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label" for="movimento-tipo">Tipo</label>
+                            <InputSelect id="movimento-tipo" class="form-select" @bind-Value="_movimentoForm.Tipo">
+                                <option value="@TipoMovimentoEstoque.EntradaManual">Entrada</option>
+                                <option value="@TipoMovimentoEstoque.SaidaManual">Saída</option>
+                            </InputSelect>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label" for="movimento-quantidade">Quantidade</label>
+                            <InputNumber id="movimento-quantidade" class="form-control" step="0.000001"
+                                @bind-Value="_movimentoForm.Quantidade" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label" for="movimento-justificativa">
+                                Justificativa @(_movimentoForm.Tipo == TipoMovimentoEstoque.SaidaManual ? "(obrigatória)" : "(opcional)")
+                            </label>
+                            <InputText id="movimento-justificativa" class="form-control"
+                                @bind-Value="_movimentoForm.Justificativa" />
+                        </div>
+                        <div class="col-12">
+                            <button class="btn btn-primary" type="submit" disabled="@(_produtos.Count == 0)">Solicitar autorização</button>
+                        </div>
+                    </div>
+                    <ValidationMessage For="() => _movimentoForm.ProdutoId" />
+                    <ValidationMessage For="() => _movimentoForm.Quantidade" />
+                </EditForm>
+            </div>
+        </section>
+
+        @if (_pendentes.Count > 0)
+        {
+            <section class="card mb-4">
+                <div class="card-body">
+                    <h2 class="h4">Autorizações pendentes</h2>
+                    <p class="text-muted">O autorizador informa seu próprio login e senha. As credenciais são verificadas sem serem armazenadas.</p>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr><th>Solicitação</th><th>Solicitante</th><th>Justificativa</th><th>Login do autorizador</th><th>Senha do autorizador</th><th>Ação</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var movimento in _pendentes)
+                                {
+                                    <tr>
+                                        <td>@NomeTipo(movimento.Tipo) @movimento.Quantidade.ToString("0.######") × @movimento.Produto</td>
+                                        <td>@movimento.SolicitanteNome</td>
+                                        <td>@(movimento.Justificativa ?? "—")</td>
+                                        <td><input class="form-control" autocomplete="username" @bind="_loginAutorizador" /></td>
+                                        <td><input class="form-control" type="password" autocomplete="current-password" @bind="_senhaAutorizador" /></td>
+                                        <td>
+                                            <div class="d-flex gap-1">
+                                                <button class="btn btn-sm btn-success" type="button" @onclick="() => DecidirMovimentoAsync(movimento, true)">Autorizar</button>
+                                                <button class="btn btn-sm btn-outline-danger" type="button" @onclick="() => DecidirMovimentoAsync(movimento, false)">Negar</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        }
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4">Posição de estoque</h2>
+                @if (_produtos.Count == 0)
+                {
+                    <p class="text-muted">Nenhum produto cadastrado.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Produto</th><th>Saldo</th><th>Mínimo</th><th>Ideal</th><th>Disponível</th><th>Alerta</th><th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var produto in _produtos)
+                                {
+                                    var configuracao = _configuracoes[produto.ProdutoId];
+                                    <tr>
+                                        <td>@produto.Descricao <small class="text-muted">(@produto.UnidadeMedida)</small></td>
+                                        <td>@produto.Quantidade.ToString("0.######")</td>
+                                        <td><InputNumber class="form-control form-control-sm" step="0.000001" min="0"
+                                            @bind-Value="configuracao.EstoqueMinimo" /></td>
+                                        <td><InputNumber class="form-control form-control-sm" step="0.000001" min="0"
+                                            @bind-Value="configuracao.EstoqueIdeal" /></td>
+                                        <td><InputCheckbox class="form-check-input" @bind-Value="configuracao.Disponivel" /></td>
+                                        <td>
+                                            @if (produto.EstoqueBaixo)
+                                            {
+                                                <span class="badge text-bg-warning">Abaixo do mínimo</span>
+                                            }
+                                            else if (!produto.Disponivel)
+                                            {
+                                                <span class="badge text-bg-secondary">Indisponível</span>
+                                            }
+                                        </td>
+                                        <td><button class="btn btn-sm btn-outline-primary" type="button"
+                                            @onclick="() => SalvarConfiguracaoAsync(produto)">Salvar</button></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4">Inventário</h2>
+                <p class="text-muted">Ao concluir, diferenças são aplicadas ao saldo e registradas com justificativa.</p>
+                <div class="row g-3 align-items-end mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label" for="inventario-tipo">Abrangência</label>
+                        <InputSelect id="inventario-tipo" class="form-select" @bind-Value="_tipoInventario">
+                            <option value="@((int)TipoInventarioEstoque.Completo)">Completo</option>
+                            <option value="@((int)TipoInventarioEstoque.Parcial)">Parcial</option>
+                        </InputSelect>
+                    </div>
+                    @if (_tipoInventario == (int)TipoInventarioEstoque.Parcial)
+                    {
+                        <div class="col-md-9"><span class="text-muted">Marque os produtos que farão parte da contagem.</span></div>
+                    }
+                </div>
+                @if (_produtos.Count > 0)
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead><tr><th>Incluir</th><th>Produto</th><th>Saldo registrado</th><th>Quantidade contada</th></tr></thead>
+                            <tbody>
+                                @foreach (var produto in _produtos)
+                                {
+                                    var incluire = _tipoInventario == (int)TipoInventarioEstoque.Completo ||
+                                        _selecionadosInventario.Contains(produto.ProdutoId);
+                                    <tr>
+                                        <td>
+                                            @if (_tipoInventario == (int)TipoInventarioEstoque.Parcial)
+                                            {
+                                                <input class="form-check-input" type="checkbox"
+                                                    checked="@incluire" @onchange="e => AlternarProdutoInventario(produto.ProdutoId, e)" />
+                                            }
+                                            else
+                                            {
+                                                <span aria-label="Incluído">✓</span>
+                                            }
+                                        </td>
+                                        <td>@produto.Descricao</td>
+                                        <td>@produto.Quantidade.ToString("0.######") @produto.UnidadeMedida</td>
+                                        <td>
+                                            @if (incluire)
+                                            {
+                                                <InputNumber class="form-control form-control-sm" min="0" step="0.000001"
+                                                    @bind-Value="_contagens[produto.ProdutoId]" />
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                <div class="mb-3" style="max-width: 42rem">
+                    <label class="form-label" for="inventario-justificativa">Justificativa dos ajustes (exigida quando houver divergência)</label>
+                    <InputTextArea id="inventario-justificativa" class="form-control" rows="2"
+                        @bind-Value="_justificativaInventario" />
+                </div>
+                <button class="btn btn-primary" type="button" disabled="@(_produtos.Count == 0)"
+                    @onclick="ConcluirInventarioAsync">Concluir inventário</button>
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4">Inventários recentes</h2>
+                @if (_inventarios.Count == 0)
+                {
+                    <p class="text-muted">Nenhum inventário concluído nesta filial.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead><tr><th>Concluído em</th><th>Tipo</th><th>Responsável</th><th>Itens</th><th>Ajustes</th><th>Justificativa</th></tr></thead>
+                            <tbody>
+                                @foreach (var inventario in _inventarios)
+                                {
+                                    <tr>
+                                        <td>@inventario.ConcluidoEmUtc.ToLocalTime().ToString("g")</td>
+                                        <td>@(inventario.Tipo == TipoInventarioEstoque.Completo ? "Completo" : "Parcial")</td>
+                                        <td>@inventario.UsuarioNome</td>
+                                        <td>@inventario.ItensContados</td>
+                                        <td>@inventario.ItensAjustados</td>
+                                        <td>@(inventario.Justificativa ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4">Movimentações recentes</h2>
+                @if (_movimentos.Count == 0)
+                {
+                    <p class="text-muted">Nenhuma movimentação concluída nesta filial.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Saldo</th><th>Responsável</th><th>Autorizador</th></tr></thead>
+                            <tbody>
+                                @foreach (var movimento in _movimentos)
+                                {
+                                    <tr>
+                                        <td>@movimento.ConcluidoEmUtc.ToLocalTime().ToString("g")</td>
+                                        <td>@movimento.Produto</td>
+                                        <td>@NomeTipo(movimento.Tipo)</td>
+                                        <td>@movimento.Quantidade.ToString("0.######")</td>
+                                        <td>@movimento.SaldoAnterior.ToString("0.######") → @movimento.SaldoResultante.ToString("0.######")</td>
+                                        <td>@movimento.SolicitanteNome</td>
+                                        <td>@(movimento.AutorizadorNome ?? "—")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+}
+
+@code {
+    private List<EstoqueApiClient.FilialDto> _filiais = [];
+    private List<EstoqueApiClient.ProdutoDto> _produtos = [];
+    private List<EstoqueApiClient.MovimentoDto> _movimentos = [];
+    private List<EstoqueApiClient.MovimentoPendenteDto> _pendentes = [];
+    private List<EstoqueApiClient.InventarioDto> _inventarios = [];
+    private readonly Dictionary<Guid, ConfiguracaoProduto> _configuracoes = [];
+    private readonly Dictionary<Guid, decimal> _contagens = [];
+    private readonly HashSet<Guid> _selecionadosInventario = [];
+    private FormularioMovimento _movimentoForm = new();
+    private Guid? _filialId;
+    private int _tipoInventario = (int)TipoInventarioEstoque.Completo;
+    private string? _justificativaInventario;
+    private string _loginAutorizador = "";
+    private string _senhaAutorizador = "";
+    private bool _carregando = true;
+    private string? _erro;
+    private string? _sucesso;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _filiais = (await ApiEstoque.ListarFiliaisAsync()).ToList();
+            if (_filiais.Count > 0)
+            {
+                _filialId = _filiais[0].Id;
+                await CarregarFilialAsync();
+            }
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+        finally { _carregando = false; }
+    }
+
+    private async Task SelecionarFilialAsync()
+    {
+        if (_filialId is null)
+            return;
+        await CarregarFilialAsync();
+    }
+
+    private async Task CarregarFilialAsync()
+    {
+        if (_filialId is not Guid filialId)
+            return;
+        try
+        {
+            _produtos = (await ApiEstoque.ListarProdutosAsync(filialId)).ToList();
+            _movimentos = (await ApiEstoque.ListarMovimentosAsync(filialId)).ToList();
+            _pendentes = (await ApiEstoque.ListarPendentesAsync(filialId)).ToList();
+            _inventarios = (await ApiEstoque.ListarInventariosAsync(filialId)).ToList();
+            _configuracoes.Clear();
+            _contagens.Clear();
+            foreach (var produto in _produtos)
+            {
+                _configuracoes[produto.ProdutoId] = new ConfiguracaoProduto
+                {
+                    EstoqueMinimo = produto.EstoqueMinimo,
+                    EstoqueIdeal = produto.EstoqueIdeal,
+                    Disponivel = produto.Disponivel
+                };
+                _contagens[produto.ProdutoId] = produto.Quantidade;
+            }
+            _selecionadosInventario.Clear();
+            _erro = null;
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task SolicitarMovimentoAsync()
+    {
+        if (_filialId is not Guid filialId || _movimentoForm.ProdutoId is not Guid produtoId)
+            return;
+        if (_movimentoForm.Tipo == TipoMovimentoEstoque.SaidaManual &&
+            string.IsNullOrWhiteSpace(_movimentoForm.Justificativa))
+        {
+            Falha(new InvalidOperationException("Informe a justificativa da saída."));
+            return;
+        }
+        try
+        {
+            await ApiEstoque.SolicitarMovimentoAsync(filialId, new EstoqueApiClient.SolicitarMovimentoRequest(
+                produtoId, _movimentoForm.Tipo, _movimentoForm.Quantidade, _movimentoForm.Justificativa));
+            _movimentoForm = new FormularioMovimento();
+            await CarregarFilialAsync();
+            Concluir("Solicitação registrada e aguardando autorização de outro usuário.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private async Task DecidirMovimentoAsync(EstoqueApiClient.MovimentoPendenteDto movimento, bool aprovar)
+    {
+        if (_filialId is not Guid filialId)
+            return;
+        try
+        {
+            await ApiEstoque.DecidirMovimentoAsync(filialId, movimento.Id,
+                new EstoqueApiClient.DecidirMovimentoRequest(aprovar, _loginAutorizador, _senhaAutorizador));
+            await CarregarFilialAsync();
+            Concluir(aprovar ? "Movimentação autorizada e concluída." : "Solicitação negada.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+        finally
+        {
+            _loginAutorizador = "";
+            _senhaAutorizador = "";
+        }
+    }
+
+    private async Task SalvarConfiguracaoAsync(EstoqueApiClient.ProdutoDto produto)
+    {
+        if (_filialId is not Guid filialId)
+            return;
+        var configuracao = _configuracoes[produto.ProdutoId];
+        try
+        {
+            await ApiEstoque.ConfigurarAsync(filialId, produto.ProdutoId,
+                new EstoqueApiClient.ConfiguracaoRequest(
+                    configuracao.EstoqueMinimo, configuracao.EstoqueIdeal, configuracao.Disponivel));
+            await CarregarFilialAsync();
+            Concluir($"Configuração de {produto.Descricao} salva.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private void AlternarProdutoInventario(Guid produtoId, ChangeEventArgs args)
+    {
+        if (args.Value is bool selecionado && selecionado)
+            _selecionadosInventario.Add(produtoId);
+        else
+            _selecionadosInventario.Remove(produtoId);
+    }
+
+    private async Task ConcluirInventarioAsync()
+    {
+        if (_filialId is not Guid filialId)
+            return;
+        var tipo = (TipoInventarioEstoque)_tipoInventario;
+        var produtosContados = tipo == TipoInventarioEstoque.Completo
+            ? _produtos.Select(x => x.ProdutoId).ToHashSet()
+            : _selecionadosInventario;
+        if (produtosContados.Count == 0)
+        {
+            Falha(new InvalidOperationException("Selecione ao menos um produto para o inventário."));
+            return;
+        }
+        try
+        {
+            var resultado = await ApiEstoque.ConcluirInventarioAsync(filialId,
+                new EstoqueApiClient.ConcluirInventarioRequest(
+                    tipo,
+                    produtosContados.Select(id =>
+                        new EstoqueApiClient.ItemContagemRequest(id, _contagens[id])).ToArray(),
+                    _justificativaInventario));
+            _justificativaInventario = null;
+            _tipoInventario = (int)TipoInventarioEstoque.Completo;
+            await CarregarFilialAsync();
+            Concluir($"Inventário concluído: {resultado.ItensContados} itens, {resultado.ItensAjustados} ajustes.");
+        }
+        catch (HttpRequestException ex) { Falha(ex); }
+        catch (InvalidOperationException ex) { Falha(ex); }
+        catch (UnauthorizedAccessException ex) { Falha(ex); }
+    }
+
+    private void Concluir(string mensagem)
+    {
+        _erro = null;
+        _sucesso = mensagem;
+    }
+
+    private void Falha(Exception ex)
+    {
+        _sucesso = null;
+        _erro = ex.Message;
+    }
+
+    private static string NomeTipo(TipoMovimentoEstoque tipo) => tipo switch
+    {
+        TipoMovimentoEstoque.EntradaManual => "Entrada",
+        TipoMovimentoEstoque.SaidaManual => "Saída",
+        TipoMovimentoEstoque.AjusteInventario => "Ajuste de inventário",
+        _ => "Movimentação"
+    };
+
+    private sealed class ConfiguracaoProduto
+    {
+        public decimal? EstoqueMinimo { get; set; }
+        public decimal? EstoqueIdeal { get; set; }
+        public bool Disponivel { get; set; }
+    }
+
+    private sealed class FormularioMovimento
+    {
+        [Required(ErrorMessage = "Selecione um produto.")]
+        public Guid? ProdutoId { get; set; }
+        public TipoMovimentoEstoque Tipo { get; set; } = TipoMovimentoEstoque.EntradaManual;
+        [Range(typeof(decimal), "0.000001", "999999999999.999999", ErrorMessage = "Informe uma quantidade positiva.")]
+        public decimal Quantidade { get; set; }
+        [StringLength(500)]
+        public string? Justificativa { get; set; }
+    }
+}

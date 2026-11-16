@@ -145,7 +145,6 @@ namespace PDV.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Justificativa")
-                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
@@ -377,6 +376,104 @@ namespace PDV.Infrastructure.Migrations
                     b.ToTable("Filiais");
                 });
 
+            modelBuilder.Entity("PDV.Domain.InventarioEstoque", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ConcluidoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FilialId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Justificativa")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("EmpresaId", "Id");
+
+                    b.HasIndex("FilialId");
+
+                    b.HasIndex("EmpresaId", "UsuarioId");
+
+                    b.HasIndex("EmpresaId", "FilialId", "ConcluidoEmUtc");
+
+                    b.ToTable("InventariosEstoque");
+                });
+
+            modelBuilder.Entity("PDV.Domain.ItemInventarioEstoque", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Diferenca")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FilialId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InventarioEstoqueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("QuantidadeContada")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("SaldoAnterior")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "ProdutoId");
+
+                    b.HasIndex("EmpresaId", "FilialId", "InventarioEstoqueId");
+
+                    b.HasIndex("EmpresaId", "InventarioEstoqueId", "ProdutoId")
+                        .IsUnique();
+
+                    b.ToTable("ItensInventarioEstoque");
+                });
+
             modelBuilder.Entity("PDV.Domain.LogAutenticacao", b =>
                 {
                     b.Property<Guid>("Id")
@@ -422,6 +519,95 @@ namespace PDV.Infrastructure.Migrations
                     b.HasIndex("EmpresaId", "OcorridoEmUtc");
 
                     b.ToTable("LogsAutenticacao");
+                });
+
+            modelBuilder.Entity("PDV.Domain.MovimentoEstoque", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AutorizacaoOperacaoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AutorizadorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ConcluidoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("FilialId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("InventarioEstoqueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Justificativa")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal?>("SaldoAnterior")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("SaldoResultante")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<int>("Situacao")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SolicitadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("SolicitanteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Tipo")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("EmpresaId", "Id");
+
+                    b.HasIndex("AutorizacaoOperacaoId")
+                        .IsUnique()
+                        .HasFilter("[AutorizacaoOperacaoId] IS NOT NULL");
+
+                    b.HasIndex("FilialId");
+
+                    b.HasIndex("EmpresaId", "AutorizacaoOperacaoId");
+
+                    b.HasIndex("EmpresaId", "AutorizadorId");
+
+                    b.HasIndex("EmpresaId", "ProdutoId");
+
+                    b.HasIndex("EmpresaId", "SolicitanteId");
+
+                    b.HasIndex("EmpresaId", "FilialId", "InventarioEstoqueId");
+
+                    b.HasIndex("EmpresaId", "FilialId", "ProdutoId", "SolicitadoEmUtc");
+
+                    b.ToTable("MovimentosEstoque");
                 });
 
             modelBuilder.Entity("PDV.Domain.Perfil", b =>
@@ -676,6 +862,59 @@ namespace PDV.Infrastructure.Migrations
                     b.HasIndex("EmpresaId", "Entidade", "EntidadeId");
 
                     b.ToTable("Auditoria", (string)null);
+                });
+
+            modelBuilder.Entity("PDV.Domain.SaldoEstoque", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CriadoEmUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("Disponivel")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("EstoqueIdeal")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<decimal?>("EstoqueMinimo")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<Guid>("FilialId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProdutoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantidade")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("decimal(18,6)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.HasKey("Id");
+
+                    b.HasAlternateKey("EmpresaId", "Id");
+
+                    b.HasIndex("FilialId");
+
+                    b.HasIndex("EmpresaId", "ProdutoId");
+
+                    b.HasIndex("EmpresaId", "FilialId", "ProdutoId")
+                        .IsUnique();
+
+                    b.ToTable("SaldosEstoque");
                 });
 
             modelBuilder.Entity("PDV.Domain.Sessao", b =>
@@ -935,6 +1174,94 @@ namespace PDV.Infrastructure.Migrations
                     b.Navigation("Empresa");
                 });
 
+            modelBuilder.Entity("PDV.Domain.InventarioEstoque", b =>
+                {
+                    b.HasOne("PDV.Domain.Filial", "Filial")
+                        .WithMany()
+                        .HasForeignKey("FilialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PDV.Domain.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "UsuarioId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Filial");
+                });
+
+            modelBuilder.Entity("PDV.Domain.ItemInventarioEstoque", b =>
+                {
+                    b.HasOne("PDV.Domain.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "ProdutoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PDV.Domain.InventarioEstoque", "InventarioEstoque")
+                        .WithMany("Itens")
+                        .HasForeignKey("EmpresaId", "FilialId", "InventarioEstoqueId")
+                        .HasPrincipalKey("EmpresaId", "FilialId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("InventarioEstoque");
+
+                    b.Navigation("Produto");
+                });
+
+            modelBuilder.Entity("PDV.Domain.MovimentoEstoque", b =>
+                {
+                    b.HasOne("PDV.Domain.Filial", "Filial")
+                        .WithMany()
+                        .HasForeignKey("FilialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PDV.Domain.AutorizacaoOperacao", "AutorizacaoOperacao")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "AutorizacaoOperacaoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PDV.Domain.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "AutorizadorId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("PDV.Domain.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "ProdutoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PDV.Domain.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "SolicitanteId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PDV.Domain.InventarioEstoque", "InventarioEstoque")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "FilialId", "InventarioEstoqueId")
+                        .HasPrincipalKey("EmpresaId", "FilialId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AutorizacaoOperacao");
+
+                    b.Navigation("Filial");
+
+                    b.Navigation("InventarioEstoque");
+
+                    b.Navigation("Produto");
+                });
+
             modelBuilder.Entity("PDV.Domain.PerfilPermissao", b =>
                 {
                     b.HasOne("PDV.Domain.Perfil", "Perfil")
@@ -964,6 +1291,26 @@ namespace PDV.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Subcategoria");
+                });
+
+            modelBuilder.Entity("PDV.Domain.SaldoEstoque", b =>
+                {
+                    b.HasOne("PDV.Domain.Filial", "Filial")
+                        .WithMany()
+                        .HasForeignKey("FilialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PDV.Domain.Produto", "Produto")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId", "ProdutoId")
+                        .HasPrincipalKey("EmpresaId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Filial");
+
+                    b.Navigation("Produto");
                 });
 
             modelBuilder.Entity("PDV.Domain.Subcategoria", b =>
@@ -1002,6 +1349,11 @@ namespace PDV.Infrastructure.Migrations
             modelBuilder.Entity("PDV.Domain.Empresa", b =>
                 {
                     b.Navigation("Filiais");
+                });
+
+            modelBuilder.Entity("PDV.Domain.InventarioEstoque", b =>
+                {
+                    b.Navigation("Itens");
                 });
 
             modelBuilder.Entity("PDV.Domain.Perfil", b =>

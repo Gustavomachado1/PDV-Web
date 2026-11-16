@@ -17,6 +17,11 @@ public interface IEmpresaScoped
     Guid EmpresaId { get; set; }
 }
 
+public interface IFilialScoped
+{
+    Guid FilialId { get; set; }
+}
+
 /// <summary>Entidade cujas alterações são registradas na trilha de auditoria (RF018/RF019).</summary>
 public interface IAuditavel
 {

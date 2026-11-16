@@ -92,7 +92,7 @@ public class AutorizacaoOperacao : EntidadeBase, IEmpresaScoped, IAuditavel
     public Guid? AutorizadorId { get; set; }
     public string Operacao { get; set; } = "";         // código da permissão exigida
     public string? Referencia { get; set; }            // id da entidade alvo, quando houver
-    public string Justificativa { get; set; } = "";
+    public string? Justificativa { get; set; }
     public ResultadoAutorizacao Resultado { get; set; } = ResultadoAutorizacao.Pendente;
     public DateTime SolicitadaEmUtc { get; set; } = DateTime.UtcNow;
     public DateTime? DecididaEmUtc { get; set; }

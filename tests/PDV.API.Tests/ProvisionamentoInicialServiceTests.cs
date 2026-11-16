@@ -33,12 +33,32 @@ public class ProvisionamentoInicialServiceTests
         Assert.Contains(perfis, perfil => perfil.Nome == "Gerente" && perfil.Tipo == TipoPerfil.Gerente);
         Assert.Contains(perfis, perfil => perfil.Nome == "Operador" && perfil.Tipo == TipoPerfil.Operador);
         Assert.Contains(perfis, perfil => perfil.Nome == "Estoquista" && perfil.Tipo == TipoPerfil.Estoquista);
-        Assert.Equal(new[] { "catalogo.gerenciar", "usuarios.gerenciar", "venda.cancelar" },
+        Assert.Equal(new[]
+            {
+                "catalogo.gerenciar",
+                "estoque.configurar",
+                "estoque.consultar",
+                "estoque.inventario.gerenciar",
+                "estoque.movimentar.solicitar",
+                "estoque.movimento.entrada.autorizar",
+                "estoque.movimento.saida.autorizar",
+                "usuarios.gerenciar",
+                "venda.cancelar"
+            },
             permissoes.Select(permissao => permissao.Codigo).Order().ToArray());
         var perfilAdministrador = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Administrador);
+        var vinculosAdministrador = vinculosPermissao
+            .Where(vinculo => vinculo.PerfilId == perfilAdministrador.Id).ToArray();
         Assert.Equal(permissoes.Select(permissao => permissao.Id).Order(),
-            vinculosPermissao.Select(vinculo => vinculo.PermissaoId).Order());
-        Assert.All(vinculosPermissao, vinculo => Assert.Equal(perfilAdministrador.Id, vinculo.PerfilId));
+            vinculosAdministrador.Select(vinculo => vinculo.PermissaoId).Order());
+        var perfilGerente = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Gerente);
+        Assert.Contains(vinculosPermissao, vinculo =>
+            vinculo.PerfilId == perfilGerente.Id &&
+            vinculo.PermissaoId == permissoes.Single(x => x.Codigo == "estoque.movimento.entrada.autorizar").Id);
+        var perfilEstoquista = perfis.Single(perfil => perfil.Tipo == TipoPerfil.Estoquista);
+        Assert.Contains(vinculosPermissao, vinculo =>
+            vinculo.PerfilId == perfilEstoquista.Id &&
+            vinculo.PermissaoId == permissoes.Single(x => x.Codigo == "estoque.inventario.gerenciar").Id);
         Assert.Equal(perfilAdministrador.Id, usuario.PerfilId);
         Assert.Equal(StatusUsuario.Ativo, usuario.Status);
         Assert.NotEqual("SenhaInicialMuitoSegura!123", usuario.SenhaHash);
