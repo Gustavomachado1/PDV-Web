@@ -34,7 +34,7 @@ namespace PDV.Infrastructure.Migrations
                         INSERT INTO [Permissoes] ([Id], [Codigo], [Descricao], [CriadoEmUtc])
                         VALUES (NEWID(), N'estoque.negativo.permitir', N'Autorizar operações que resultem em estoque negativo', SYSUTCDATETIME());
 
-                    INSERT INTO [PerfilPermissoes] ([Id], [EmpresaId], [PerfilId], [PermissaoId], [CriadoEmUtc])
+                    INSERT INTO [PerfisPermissoes] ([Id], [EmpresaId], [PerfilId], [PermissaoId], [CriadoEmUtc])
                     SELECT NEWID(), perfil.[EmpresaId], perfil.[Id], permissao.[Id], SYSUTCDATETIME()
                     FROM [Perfis] AS perfil
                     CROSS JOIN [Permissoes] AS permissao
@@ -42,7 +42,7 @@ namespace PDV.Infrastructure.Migrations
                       AND permissao.[Codigo] IN (N'estoque.negativo.configurar', N'estoque.negativo.permitir')
                       AND NOT EXISTS (
                           SELECT 1
-                          FROM [PerfilPermissoes] AS existente
+                          FROM [PerfisPermissoes] AS existente
                           WHERE existente.[PerfilId] = perfil.[Id]
                             AND existente.[PermissaoId] = permissao.[Id]);
                 END
@@ -59,7 +59,7 @@ namespace PDV.Infrastructure.Migrations
                 WHERE permissao.[Codigo] IN (N'estoque.negativo.configurar', N'estoque.negativo.permitir');
 
                 DELETE perfilPermissao
-                FROM [PerfilPermissoes] AS perfilPermissao
+                FROM [PerfisPermissoes] AS perfilPermissao
                 INNER JOIN [Permissoes] AS permissao ON permissao.[Id] = perfilPermissao.[PermissaoId]
                 WHERE permissao.[Codigo] IN (N'estoque.negativo.configurar', N'estoque.negativo.permitir');
 
